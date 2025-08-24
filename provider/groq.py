@@ -1,0 +1,161 @@
+from typing import Generator
+from pydantic import BaseModel, TypeAdapter
+from core import model
+from memory.agent_memory import AgentMemory
+from core.ai_client import AiClient
+from groq import Groq, Stream
+from groq.types.chat import ChatCompletion, ChatCompletionChunk
+import logging
+import json
+
+from config.configuration import ConfigManager
+
+logger = logging.getLogger(__name__)
+
+class GroqClient(AiClient):
+    def __init__(self, model: str, temperature: float, tools =  None):
+        self.model = model
+        self.temperature = temperature
+        self.tools = tools
+        groq_config = ConfigManager.get().groq
+        self.client = Groq(timeout=groq_config.timeout, api_key=groq_config.api_key,base_url=groq_config.base_url)
+        super().__init__()
+
+    def query_llm(self, input: str, memory: AgentMemory, stream: bool = False, format: BaseModel = None) -> Generator[str, None, None] | tuple[str, list]:
+        """Query the Groq LLM with proper error handling and response management.
+        
+        Args:
+            memory (AgentMemory): Message history for chat mode (AgentMemory memory object)
+            input (str): The input text or prompt
+            stream (bool, optional): Whether to stream the response. Defaults to False.
+            format (BaseModel, optional): Optional Pydantic model for response validation. Defaults to None.
+            
+        Returns:
+            Generator[str, None, None] | tuple[str, list]: Either a generator of text chunks (if stream=True)
+            or a tuple of (content, tool_calls) where content is the model's output and 
+            tool_calls is a list of tool calls (or None) (if stream=False).
+        """
+        try:
+           
+        
+            conversation = memory.get_conversation(user_input=input)
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                temperature=self.temperature,
+                stream=stream,
+                messages=conversation,
+                tools=self.tools,
+                response_format={"type": "json_object"} if format else None
+            )
+
+            if not stream:
+                return self._build_final_response(memory=memory, response=response)
+            else:
+                return self._generate_stream(memory=memory, response=response)
+
+        except Exception as e:
+            logger.error("Error in Groq query: %s", str(e))
+            raise
+            
+    def _generate_stream(self, memory: AgentMemory, response: Stream[ChatCompletionChunk]) -> Generator[str, None, None]:
+        """Handle streaming response with proper cleanup and error handling.
+        
+        Args:
+            memory (AgentMemory): Memory object to record the assistant response
+            response (Stream[ChatCompletionChunk]): The streaming response
+            
+        Yields:
+            str: Chunks of text content from the model response
+        """
+        def stream_generator():
+            full_response = []
+            accumulated_tool_calls = {}  # Dict to accumulate tool calls by index
+            final_tool_calls = None
+            try:
+                for chunk in response:
+                    if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
+                        delta = chunk.choices[0].delta
+                        content = delta.content
+                        
+                        # Handle accumulation of tool_calls
+                        if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                            for tc_delta in delta.tool_calls:
+                                tc_index = tc_delta.index
+                                
+                                if tc_index not in accumulated_tool_calls:
+                                    accumulated_tool_calls[tc_index] = {
+                                        'id': tc_delta.id or '',
+                                        'type': tc_delta.type or 'function',
+                                        'function': {
+                                            'name': tc_delta.function.name if tc_delta.function and tc_delta.function.name else '',
+                                            'arguments': tc_delta.function.arguments if tc_delta.function and tc_delta.function.arguments else ''
+                                        }
+                                    }
+                                else:
+                                    existing_tc = accumulated_tool_calls[tc_index]
+                                    if tc_delta.id:
+                                        existing_tc['id'] += tc_delta.id
+                                    if tc_delta.function and tc_delta.function.arguments:
+                                        existing_tc['function']['arguments'] += tc_delta.function.arguments
+                    else:
+                        continue
+                    if content:
+                        full_response.append(content)
+                        yield content
+            except Exception as e:
+                logger.error(f"Error in stream_generator: {str(e)}")
+                raise
+            finally:
+                # Convert accumulated tool calls to final format
+                if accumulated_tool_calls:
+                    final_tool_calls = list(accumulated_tool_calls.values())
+                
+                # After streaming, record in persistent memory only if there are no tool_calls
+                # (tool results are saved by AgentRunner)
+                if full_response:
+                    complete_content = "".join(full_response)
+                    history_entry = {"role": "assistant", "content": complete_content}
+                    if final_tool_calls:
+                        history_entry["tool_calls"] = final_tool_calls
+                    
+                    if not final_tool_calls:
+                        memory.record(history_entry)
+        return stream_generator()
+    
+    def _build_final_response(self, memory: AgentMemory, response: ChatCompletion) -> tuple[str, list]:
+        """Processes a complete (non-streaming) response and updates memory.
+
+        Args:
+            memory (AgentMemory): Memory object to record the assistant response
+            response (ChatCompletion): The HTTP response object containing the full response.
+
+        Returns:
+            tuple[str, list]: A tuple containing (content, tool_calls) where content is the model's output 
+            and tool_calls is a list of tool calls (or None if no tools were called).
+        """
+        content = None
+        tool_calls = None
+        
+        if not hasattr(response, 'choices'):
+            content = '' 
+            tool_calls = None
+        elif len(response.choices) > 0 and hasattr(response.choices[0], 'message') and hasattr(response.choices[0].message, 'content'):
+            content = response.choices[0].message.content
+            tool_calls = response.choices[0].message.tool_calls
+            
+        tc = None
+        if tool_calls:
+            # tool_calls is a list of ChatCompletionMessageToolCall objects
+            # First convert them to dict (if they're not already)
+            tool_calls_dicts = [tc.model_dump() if hasattr(tc, "model_dump") else dict(tc) for tc in tool_calls]
+            # Then use TypeAdapter to validate the list as ToolCalls
+            tool_calls_adapter = TypeAdapter(list[model.ToolCall])
+            tc = tool_calls_adapter.validate_python(tool_calls_dicts)
+            # For tool calls, don't save to memory (result will be saved by AgentRunner)
+        else:
+            # Save to memory only normal text responses, not tool calls
+            memory.record({"role": "assistant", "content": content})
+        
+        return (content, tc)
+
