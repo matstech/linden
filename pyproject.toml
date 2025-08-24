@@ -3,10 +3,10 @@ requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "chisel"
+name = "linden"
 version = "1.0.0"
-authors = [{ name = "Matteo Stabile", email = "matteo.stabile2@gmail.com" }]
-description = "Una breve descrizione di cosa fa il pacchetto Chisel."
+authors = [{ name = "matstech", email = "matteo.stabile2@gmail.com" }]
+description = "A Python framework for building AI agents with multi-provider LLM support, persistent memory, and function calling capabilities."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
@@ -17,5 +17,5 @@ license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
 [project.urls]
-"Homepage" = "https://github.com/matstech/chisel"
-"Bug Tracker" = "https://github.com/matstech/chisel/issues"
+"Homepage" = "https://github.com/matstech/linden"
+"Bug Tracker" = "https://github.com/matstech/linden/issues"

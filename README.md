@@ -1,7 +1,7 @@
-# Chisel
+# Linden
 
 <div align="center">
-  <img src="doc/logo.png" alt="Chisel Logo" width="200"/>
+  <img src="doc/logo.png" alt="Linden Logo" width="200"/>
 </div>
 
 <div align="center">
@@ -41,7 +41,7 @@
 
 ## Overview
 
-Chisel is a comprehensive AI agent framework that provides a unified interface for interacting with multiple Large Language Model (LLM) providers including OpenAI, Groq, and Ollama. It features persistent conversation memory, automatic tool/function calling, and robust error handling for building production-ready AI applications.
+Linden is a comprehensive AI agent framework that provides a unified interface for interacting with multiple Large Language Model (LLM) providers including OpenAI, Groq, and Ollama. It features persistent conversation memory, automatic tool/function calling, and robust error handling for building production-ready AI applications.
 
 ## Features
 
@@ -57,7 +57,7 @@ Chisel is a comprehensive AI agent framework that provides a unified interface f
 ## Installation
 
 ```bash
-pip install chisel
+pip install linden
 ```
 
 ## Requirements
@@ -376,5 +376,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-- GitHub Issues: [https://github.com/matstech/chisel/issues](https://github.com/matstech/chisel/issues)
-- Documentation: [https://github.com/matstech/chisel](https://github.com/matstech/chisel)
+- GitHub Issues: [https://github.com/matstech/linden/issues](https://github.com/matstech/linden/issues)
+- Documentation: [https://github.com/matstech/linden](https://github.com/matstech/linden)
