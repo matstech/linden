@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "linden"
-version = "1.0.0"
+version = "0.1.0"
 authors = [{ name = "Matteo Stabile", email = "matteo.stabile2@gmail.com" }]
 description = "A Python framework for building AI agents with multi-provider LLM support, persistent memory, and function calling capabilities."
 readme = "README.md"

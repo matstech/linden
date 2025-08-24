@@ -13,14 +13,12 @@ __author__ = "matstech"
 __email__ = "matteo.stabile2@gmail.com"
 
 # Import core components for easy access
-from .core import AgentRunner, AIClient, Model
+from .core import AgentRunner
 from .memory import AgentMemory
 from .config import Configuration
 
 __all__ = [
     "AgentRunner",
-    "AIClient", 
-    "Model",
     "AgentMemory",
     "Configuration",
 ]
