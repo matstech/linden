@@ -76,8 +76,7 @@ pip install linden
 ### Basic Agent Setup
 
 ```python
-from core.agent_runner import AgentRunner
-from core.ai_client import Provider
+from linden.core import AgentRunner, Provider
 
 # Create a simple agent
 agent = AgentRunner(

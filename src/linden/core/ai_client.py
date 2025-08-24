@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Callable
 from pydantic import BaseModel
-from memory.agent_memory import AgentMemory
+from ..memory.agent_memory import AgentMemory
 
 
 class AgentKind(Enum):

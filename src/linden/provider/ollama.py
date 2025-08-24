@@ -3,9 +3,9 @@ from typing import Generator
 from ollama import ChatResponse, Options, GenerateResponse, Client
 from pydantic import BaseModel, TypeAdapter
 from core import model
-from memory.agent_memory import AgentMemory
-from core.ai_client import AiClient
-from config.configuration import ConfigManager
+from ..memory.agent_memory import AgentMemory
+from ..core.ai_client import AiClient
+from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
 

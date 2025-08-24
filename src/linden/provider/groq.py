@@ -1,28 +1,28 @@
 from typing import Generator
 from pydantic import BaseModel, TypeAdapter
 from core import model
-from memory.agent_memory import AgentMemory
-from core.ai_client import AiClient
-from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from ..memory.agent_memory import AgentMemory
+from ..core.ai_client import AiClient
+from groq import Groq, Stream
+from groq.types.chat import ChatCompletion, ChatCompletionChunk
 import logging
 import json
 
-from config.configuration import ConfigManager
+from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
 
-class OpenAiClient(AiClient):
+class GroqClient(AiClient):
     def __init__(self, model: str, temperature: float, tools =  None):
         self.model = model
         self.temperature = temperature
         self.tools = tools
-        openai_config = ConfigManager.get().openai
-        self.client = OpenAI(timeout=openai_config.timeout, api_key=openai_config.api_key)
+        groq_config = ConfigManager.get().groq
+        self.client = Groq(timeout=groq_config.timeout, api_key=groq_config.api_key,base_url=groq_config.base_url)
         super().__init__()
 
     def query_llm(self, input: str, memory: AgentMemory, stream: bool = False, format: BaseModel = None) -> Generator[str, None, None] | tuple[str, list]:
-        """Query the OpenAI LLM with proper error handling and response management.
+        """Query the Groq LLM with proper error handling and response management.
         
         Args:
             memory (AgentMemory): Message history for chat mode (AgentMemory memory object)
@@ -55,7 +55,7 @@ class OpenAiClient(AiClient):
                 return self._generate_stream(memory=memory, response=response)
 
         except Exception as e:
-            logger.error("Error in OpenAI query: %s", str(e))
+            logger.error("Error in Groq query: %s", str(e))
             raise
             
     def _generate_stream(self, memory: AgentMemory, response: Stream[ChatCompletionChunk]) -> Generator[str, None, None]:

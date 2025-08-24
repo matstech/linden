@@ -4,7 +4,7 @@ import time
 from typing import Optional
 from mem0 import Memory
 
-from config.configuration import ConfigManager
+from ..config.configuration import ConfigManager
 
 
 class MemoryManager:

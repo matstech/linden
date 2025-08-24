@@ -4,13 +4,13 @@ import json
 from typing import Callable, Generator
 from pydantic import BaseModel, ValidationError
 from requests import RequestException
-from memory.agent_memory import AgentMemory
-from core.ai_client import Provider
-from utils.doc_string_parser import parse_google_docstring
-from provider.groq import GroqClient
-from core.model import  ToolCall, ToolError, ToolNotFound
-from provider.ollama import Ollama
-from provider.openai import OpenAiClient
+from ..memory.agent_memory import AgentMemory
+from .ai_client import Provider
+from ..utils.doc_string_parser import parse_google_docstring
+from ..provider.groq import GroqClient
+from .model import ToolCall, ToolError, ToolNotFound
+from ..provider.ollama import Ollama
+from ..provider.openai import OpenAiClient
 
 PATTERN = r"%#(.*?)#%"
 
