@@ -1,0 +1,170 @@
+"""
+Tests for the Groq client.
+"""
+
+import pytest
+from unittest.mock import MagicMock, patch
+import json
+from linden.provider.groq import GroqClient
+from linden.core.model import ToolCall, Function
+from pydantic import BaseModel
+
+
+class TestGroqClient:
+    def test_init(self, mock_config_manager):
+        """Test client initialization."""
+        client = GroqClient(model="llama3-8b-8192", temperature=0.7)
+        assert client.model == "llama3-8b-8192"
+        assert client.temperature == 0.7
+        assert client.tools is None
+    
+    def test_init_with_tools(self, mock_config_manager):
+        """Test client initialization with tools."""
+        tools = [{"type": "function", "function": {"name": "test_fn", "description": "A test function"}}]
+        client = GroqClient(model="llama3-8b-8192", temperature=0.7, tools=tools)
+        assert client.tools == tools
+
+    def test_query_llm_non_streaming(self, mock_groq_client, mock_memory, mock_groq_response):
+        """Test querying the LLM in non-streaming mode."""
+        client, mock_instance = mock_groq_client
+        
+        # Setup response
+        mock_instance.chat.completions.create.return_value = mock_groq_response
+        
+        # Call method
+        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory, stream=False)
+        
+        # Verify
+        mock_memory.get_conversation.assert_called_once_with(user_input="Hello")
+        mock_instance.chat.completions.create.assert_called_once()
+        assert content == "Test response"
+        assert tool_calls is None
+        mock_memory.record.assert_called_once()
+    
+    def test_query_llm_with_format(self, mock_groq_client, mock_memory, mock_groq_response):
+        """Test querying the LLM with a format."""
+        client, mock_instance = mock_groq_client
+        
+        # Setup response
+        mock_instance.chat.completions.create.return_value = mock_groq_response
+        
+        # Define a Pydantic model for format validation
+        class TestFormat(BaseModel):
+            result: str
+        
+        # Call method
+        client.query_llm(input="Hello", memory=mock_memory, format=TestFormat)
+        
+        # Verify response_format was passed
+        call_kwargs = mock_instance.chat.completions.create.call_args.kwargs
+        assert call_kwargs["response_format"] == {"type": "json_object"}
+
+    def test_query_llm_with_tools(self, mock_groq_client, mock_memory, mock_groq_response):
+        """Test querying the LLM with tools."""
+        client, mock_instance = mock_groq_client
+        
+        # Add tools
+        tools = [{"type": "function", "function": {"name": "test_fn", "description": "A test function"}}]
+        client.tools = tools
+        
+        # Setup response with tool calls
+        mock_tool_call = MagicMock()
+        mock_tool_call.id = "call_123"
+        mock_tool_call.type = "function"
+        mock_tool_call.function.name = "test_fn"
+        mock_tool_call.function.arguments = '{"param": "value"}'
+        mock_tool_call.model_dump = MagicMock(return_value={
+            "id": "call_123",
+            "type": "function",
+            "function": {
+                "name": "test_fn",
+                "arguments": '{"param": "value"}'
+            }
+        })
+        
+        mock_groq_response.choices[0].message.tool_calls = [mock_tool_call]
+        mock_instance.chat.completions.create.return_value = mock_groq_response
+        
+        # Call method
+        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory)
+        
+        # Verify
+        assert content == "Test response"
+        assert len(tool_calls) == 1
+        assert tool_calls[0].id == "call_123"
+        assert tool_calls[0].function.name == "test_fn"
+        # Memory should not be recorded when there are tool calls
+        assert not mock_memory.record.called
+
+    def test_streaming_response(self, mock_groq_client, mock_memory):
+        """Test streaming response handling."""
+        client, mock_instance = mock_groq_client
+        
+        # Create a mock streaming response
+        mock_chunk1 = MagicMock()
+        mock_chunk1.choices = [MagicMock()]
+        mock_chunk1.choices[0].delta.content = "Hello"
+        
+        mock_chunk2 = MagicMock()
+        mock_chunk2.choices = [MagicMock()]
+        mock_chunk2.choices[0].delta.content = " world"
+        
+        # Set up mock to return an iterable for streaming
+        mock_instance.chat.completions.create.return_value = [mock_chunk1, mock_chunk2]
+        
+        # Call method
+        stream_gen = client.query_llm(input="Tell me a greeting", memory=mock_memory, stream=True)
+        
+        # Verify streaming content
+        result = []
+        for chunk in stream_gen:
+            result.append(chunk)
+            
+        assert result == ["Hello", " world"]
+        
+        # After streaming completes, the complete content should be recorded
+        # Need to make sure the mock has the correct attribute for tool_calls
+        mock_chunk1.choices[0].delta.tool_calls = None
+        mock_chunk2.choices[0].delta.tool_calls = None
+        mock_memory.record.assert_called_once_with({"role": "assistant", "content": "Hello world"})
+
+    def test_error_handling(self, mock_groq_client, mock_memory):
+        """Test error handling in the client."""
+        client, mock_instance = mock_groq_client
+        
+        # Setup to raise an exception
+        mock_instance.chat.completions.create.side_effect = Exception("API Error")
+        
+        # Verify exception is raised
+        with pytest.raises(Exception, match="API Error"):
+            client.query_llm(input="Hello", memory=mock_memory)
+
+    def test_build_final_response_without_choices(self, mock_groq_client, mock_memory):
+        """Test _build_final_response method when response has no choices."""
+        client, _ = mock_groq_client
+        
+        # Create mock response with no choices
+        mock_resp = MagicMock()
+        mock_resp.choices = []
+        
+        content, tool_calls = client._build_final_response(memory=mock_memory, response=mock_resp)
+        
+        assert content is None
+        assert tool_calls is None
+
+    def test_build_final_response_without_content(self, mock_groq_client, mock_memory):
+        """Test _build_final_response method when message has no content."""
+        client, _ = mock_groq_client
+        
+        # Create mock response with choices but no content
+        mock_resp = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        delattr(mock_message, 'content')  # Remove content attribute
+        mock_choice.message = mock_message
+        mock_resp.choices = [mock_choice]
+        
+        content, tool_calls = client._build_final_response(memory=mock_memory, response=mock_resp)
+        
+        assert content is None
+        assert tool_calls is None

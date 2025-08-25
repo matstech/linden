@@ -1,0 +1,16 @@
+# Test configuration file
+[ollama]
+url = "http://localhost:11434"
+
+[openai]
+api_key = "test_key"
+timeout = 60
+
+[groq]
+api_key = "test_key"
+timeout = 60
+
+[models]
+openai = "gpt-4"
+groq = "llama2-70b-4096"
+ollama = "llama2"

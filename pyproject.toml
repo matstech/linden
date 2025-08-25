@@ -44,7 +44,6 @@ dependencies = [
     "joblib==1.5.1",
     "jsonschema==4.25.1",
     "jsonschema-specifications==2025.4.1",
-    "linden @ file:///Users/mat/workspace/personal/chisel",
     "MarkupSafe==3.0.2",
     "mem0ai==0.1.116",
     "mpmath==1.3.0",
