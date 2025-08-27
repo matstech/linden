@@ -1,18 +1,21 @@
+# pylint: disable=C0301
+"""Module wrap OPENAI provider interaction"""
+import logging
 from typing import Generator
+from openai import OpenAI, Stream
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel, TypeAdapter
 from ..core import model
 from ..memory.agent_memory import AgentMemory
 from ..core.ai_client import AiClient
-from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
-import logging
-import json
+
 
 from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
 
 class OpenAiClient(AiClient):
+    """Defining OPENAI integration"""
     def __init__(self, model: str, temperature: float, tools =  None):
         self.model = model
         self.temperature = temperature
@@ -36,8 +39,7 @@ class OpenAiClient(AiClient):
             tool_calls is a list of tool calls (or None) (if stream=False).
         """
         try:
-           
-        
+
             conversation = memory.get_conversation(user_input=input)
 
             response = self.client.chat.completions.create(
@@ -46,8 +48,7 @@ class OpenAiClient(AiClient):
                 stream=stream,
                 messages=conversation,
                 tools=self.tools,
-                response_format={"type": "json_object"} if format else None
-            )
+                response_format={"type": "json_object"} if format else None)
 
             if not stream:
                 return self._build_final_response(memory=memory, response=response)
@@ -57,7 +58,7 @@ class OpenAiClient(AiClient):
         except Exception as e:
             logger.error("Error in OpenAI query: %s", str(e))
             raise
-            
+
     def _generate_stream(self, memory: AgentMemory, response: Stream[ChatCompletionChunk]) -> Generator[str, None, None]:
         """Handle streaming response with proper cleanup and error handling.
         
@@ -77,12 +78,12 @@ class OpenAiClient(AiClient):
                     if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
                         delta = chunk.choices[0].delta
                         content = delta.content
-                        
+
                         # Handle accumulation of tool_calls
                         if hasattr(delta, 'tool_calls') and delta.tool_calls:
                             for tc_delta in delta.tool_calls:
                                 tc_index = tc_delta.index
-                                
+
                                 if tc_index not in accumulated_tool_calls:
                                     accumulated_tool_calls[tc_index] = {
                                         'id': tc_delta.id or '',
@@ -104,13 +105,13 @@ class OpenAiClient(AiClient):
                         full_response.append(content)
                         yield content
             except Exception as e:
-                logger.error(f"Error in stream_generator: {str(e)}")
+                logger.error("Error in stream_generator: %s", e)
                 raise
             finally:
                 # Convert accumulated tool calls to final format
                 if accumulated_tool_calls:
                     final_tool_calls = list(accumulated_tool_calls.values())
-                
+
                 # After streaming, record in persistent memory only if there are no tool_calls
                 # (tool results are saved by AgentRunner)
                 if full_response:
@@ -118,11 +119,11 @@ class OpenAiClient(AiClient):
                     history_entry = {"role": "assistant", "content": complete_content}
                     if final_tool_calls:
                         history_entry["tool_calls"] = final_tool_calls
-                    
+
                     if not final_tool_calls:
                         memory.record(history_entry)
         return stream_generator()
-    
+
     def _build_final_response(self, memory: AgentMemory, response: ChatCompletion) -> tuple[str, list]:
         """Processes a complete (non-streaming) response and updates memory.
 
@@ -136,14 +137,14 @@ class OpenAiClient(AiClient):
         """
         content = None
         tool_calls = None
-        
+
         if not hasattr(response, 'choices'):
-            content = '' 
+            content = ''
             tool_calls = None
         elif len(response.choices) > 0 and hasattr(response.choices[0], 'message') and hasattr(response.choices[0].message, 'content'):
             content = response.choices[0].message.content
             tool_calls = response.choices[0].message.tool_calls
-            
+
         tc = None
         if tool_calls:
             # tool_calls is a list of ChatCompletionMessageToolCall objects
@@ -156,6 +157,5 @@ class OpenAiClient(AiClient):
         else:
             # Save to memory only normal text responses, not tool calls
             memory.record({"role": "assistant", "content": content})
-        
-        return (content, tc)
 
+        return (content, tc)

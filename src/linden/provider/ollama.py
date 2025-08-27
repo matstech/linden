@@ -1,3 +1,5 @@
+# pylint: disable=C0301
+"""Module wrap OLLAMA provider interaction"""
 import logging
 from typing import Generator
 from ollama import ChatResponse, Options, GenerateResponse, Client
@@ -10,6 +12,7 @@ from ..config.configuration import ConfigManager
 logger = logging.getLogger(__name__)
 
 class Ollama(AiClient):
+    """Defining Ollama integration"""
     def __init__(self, model:str, temperature: float,  tools = None):
         self.model = model
         self.temperature = temperature
@@ -17,7 +20,7 @@ class Ollama(AiClient):
         ollama_config = ConfigManager.get().ollama
         self.client = Client(timeout=ollama_config.timeout)
         super().__init__()
-    
+
     def query_llm(self, input: str, memory: AgentMemory, stream: bool = False, format: BaseModel = None) -> Generator[str, None, None] | tuple[str, list]:
         """ Interaction with local LLM by official Ollama client
 
@@ -35,7 +38,7 @@ class Ollama(AiClient):
         try:
 
             conversation = memory.get_conversation(user_input=input)
-            
+
             response: ChatResponse = self.client.chat(
                 model=self.model,
                 options=Options(temperature=self.temperature),
@@ -49,7 +52,7 @@ class Ollama(AiClient):
             else:
                 return self._generate_stream(memory=memory, response=response)
         except Exception as e:
-            logger.error(f"Error in query_llm: {str(e)}")
+            logger.error("Error in query_llm: %s", e)
             raise
 
     def _generate_stream(self, memory: AgentMemory, response: ChatResponse) -> Generator[str, None, None]:
@@ -78,7 +81,7 @@ class Ollama(AiClient):
                         full_response.append(content)
                         yield content
             except Exception as e:
-                logger.error(f"Error in stream_generator: {str(e)}")
+                logger.error("Error in stream_generator: %s", e)
                 raise
             finally:
                 # After streaming, record in persistent memory only if there are no tool_calls
@@ -88,11 +91,11 @@ class Ollama(AiClient):
                     history_entry = {"role": "assistant", "content": complete_content}
                     if tool_calls:
                         history_entry["tool_calls"] = tool_calls
-                    
+
                     if not tool_calls:
                         memory.record(history_entry)
         return stream_generator()
-    
+
     def _build_final_response(self, memory: AgentMemory, response: ChatResponse|GenerateResponse) -> tuple[str, list]:
         """ Processes a complete (non-streaming) response and updates memory.
 
@@ -112,7 +115,7 @@ class Ollama(AiClient):
             content = response.message.content
             # Extract tool calls if present
             tool_calls = getattr(response.message, 'tool_calls', None)
-            
+
         tc = None
         if tool_calls:
             # tool_calls is a list of ChatCompletionMessageToolCall objects
@@ -125,6 +128,5 @@ class Ollama(AiClient):
         else:
             # Save to memory only normal text responses, not tool calls
             memory.record({"role": "assistant", "content": content})
-        
-        return (content, tc)
 
+        return (content, tc)
