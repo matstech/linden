@@ -30,6 +30,7 @@ timeout = 60
 
 [memory]
 path = "/tmp/linden-memory"
+collection_name = "test_memories"
 """)
         temp_path = temp.name
     

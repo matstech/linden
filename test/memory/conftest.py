@@ -35,6 +35,9 @@ def test_agent_id():
     return "test-agent-id"
 
 
+
+
+
 @pytest.fixture
 def test_system_prompt():
     """System prompt for testing."""
@@ -85,6 +88,7 @@ timeout = 60
 
 [memory]
 path = "{temp_memory_path}"
+collection_name = "test_memories"
 """
         temp.write(config_content.encode('utf-8'))
         temp_path = temp.name

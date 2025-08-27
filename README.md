@@ -80,6 +80,7 @@ from linden.core import AgentRunner, Provider
 
 # Create a simple agent
 agent = AgentRunner(
+    user_id="user123",
     name="assistant",
     model="gpt-4",
     temperature=0.7,
@@ -109,6 +110,7 @@ def get_weather(location: str, units: str = "celsius") -> str:
 
 # Create agent with tools
 agent = AgentRunner(
+    user_id="user123",
     name="weather_bot",
     model="gpt-4",
     temperature=0.7,
@@ -140,6 +142,7 @@ class PersonInfo(BaseModel):
     occupation: str
 
 agent = AgentRunner(
+    user_id="user123",
     name="extractor",
     model="gpt-4",
     temperature=0.1,
@@ -177,6 +180,7 @@ timeout = 60
 
 [memory]
 path = "./memory_db"
+collection_name = "agent_memories"
 ```
 
 ### Environment Variables
@@ -260,7 +264,7 @@ def search_database(query: str, limit: int = 10, filters: dict = None) -> list:
 ### Multi-Turn Conversations
 
 ```python
-agent = AgentRunner(name="chat_bot", model="gpt-4", temperature=0.7)
+agent = AgentRunner(user_id="user123", name="chat_bot", model="gpt-4", temperature=0.7)
 
 # Conversation maintains context automatically
 agent.run("My name is Alice")
@@ -272,6 +276,7 @@ agent.run("Tell me about my previous question")  # Has full context
 
 ```python
 agent = AgentRunner(
+    user_id="user123",
     name="robust_agent",
     model="gpt-4", 
     temperature=0.7,
@@ -304,6 +309,7 @@ history = agent.memory.get_conversation("Current query")
 ```python
 # Use local Ollama models
 local_agent = AgentRunner(
+    user_id="user123",
     name="local_agent",
     model="llama2",
     client=Provider.OLLAMA
@@ -311,6 +317,7 @@ local_agent = AgentRunner(
 
 # Use Groq for fast inference
 fast_agent = AgentRunner(
+    user_id="user123",
     name="fast_agent", 
     model="mixtral-8x7b-32768",
     client=Provider.GROQ
@@ -322,6 +329,7 @@ fast_agent = AgentRunner(
 ### AgentRunner
 
 #### Constructor Parameters
+- `user_id` (str): Unique identifier for the user
 - `name` (str): Unique agent identifier
 - `model` (str): LLM model name
 - `temperature` (int): Response randomness (0-1)

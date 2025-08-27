@@ -14,6 +14,7 @@ def main():
     
     # Create an agent
     agent = AgentRunner(
+        user_id="user123",  # User identifier for memory isolation
         name="example_agent",
         model="gpt-3.5-turbo",
         temperature=0.7,
