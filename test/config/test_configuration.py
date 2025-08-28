@@ -7,7 +7,7 @@ import pytest
 
 from linden.config.configuration import (
     Configuration, ConfigManager, ModelsConfig, GroqConfig, 
-    OllamaConfig, OpenAIConfig, MemoryConfig
+    OllamaConfig, OpenAIConfig, AnthropicConfig, MemoryConfig
 )
 
 
@@ -21,6 +21,7 @@ class TestConfiguration:
         assert isinstance(config.groq, GroqConfig)
         assert isinstance(config.ollama, OllamaConfig)
         assert isinstance(config.openai, OpenAIConfig)
+        assert isinstance(config.anthropic, AnthropicConfig)
         assert isinstance(config.memory, MemoryConfig)
         
         # Check specific values
@@ -29,6 +30,8 @@ class TestConfiguration:
         assert config.groq.base_url == "https://api.groq.com/openai/v1"
         assert config.groq.api_key == "groq-test-key"
         assert config.openai.api_key == "openai-test-key"
+        assert config.anthropic.api_key == "anthropic-test-key"
+        assert config.anthropic.max_tokens == 4096
         assert config.memory.path == "/tmp/linden-memory"
     
     def test_from_file_sets_openai_env_var(self, temp_config_file):
@@ -164,6 +167,11 @@ timeout = 30
 api_key = "modified-key"
 timeout = 60
 
+[anthropic]
+api_key = "modified-anthropic-key"
+max_tokens = 8192
+timeout = 120
+
 [memory]
 path = "/tmp/linden-memory"
 collection_name= "test-memories"
@@ -176,6 +184,8 @@ collection_name= "test-memories"
         config = ConfigManager.get()
         assert config.models.dec == "modified-model"
         assert config.openai.api_key == "modified-key"
+        assert config.anthropic.api_key == "modified-anthropic-key"
+        assert config.anthropic.max_tokens == 8192
     
     def test_reload_without_initialization(self):
         """Test that ConfigManager.reload raises RuntimeError when not initialized."""

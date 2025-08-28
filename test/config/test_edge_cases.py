@@ -11,7 +11,7 @@ import pytest
 
 from linden.config.configuration import (
     Configuration, ConfigManager, ModelsConfig, GroqConfig, 
-    OllamaConfig, OpenAIConfig, MemoryConfig
+    OllamaConfig, OpenAIConfig, AnthropicConfig, MemoryConfig
 )
 
 
@@ -41,6 +41,11 @@ timeout = 30
 
 [openai]
 api_key = ""
+timeout = 60
+
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
 timeout = 60
 
 [memory]
@@ -77,6 +82,11 @@ timeout = 30
 
 [openai]
 api_key = ""
+timeout = 60
+
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
 timeout = 60
 
 [memory]
@@ -145,6 +155,11 @@ timeout = 30
 
 [openai]
 api_key = "key"
+timeout = 60
+
+[anthropic]
+api_key = "anthropic-key"
+max_tokens = 4096
 timeout = 60
 
 [memory]

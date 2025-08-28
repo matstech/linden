@@ -30,6 +30,11 @@ timeout = 30
 api_key = "openai-test-key"
 timeout = 60
 
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
+timeout = 60
+
 [memory]
 path = "/tmp/linden-memory"
 collection_name = "test_memories"
@@ -121,6 +126,11 @@ timeout = 30
 
 [openai]
 api_key = "openai-test-key"
+timeout = 60
+
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
 timeout = 60
 
 [memory]
