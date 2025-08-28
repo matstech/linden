@@ -1,7 +1,7 @@
 # Linden
 
 <div align="center">
-  <img src="doc/logo.png" alt="Linden Logo" width="200"/>
+<img src="https://raw.githubusercontent.com/matstech/linden/main/doc/logo.png" alt="Linden Logo" width="200"/>
 </div>
 
 <div align="center">
@@ -41,11 +41,11 @@
 
 ## Overview
 
-Linden is a comprehensive AI agent framework that provides a unified interface for interacting with multiple Large Language Model (LLM) providers including OpenAI, Groq, and Ollama. It features persistent conversation memory, automatic tool/function calling, and robust error handling for building production-ready AI applications.
+Linden is a comprehensive AI agent framework that provides a unified interface for interacting with multiple Large Language Model (LLM) providers including OpenAI, Anthropic, Groq, and Ollama. It features persistent conversation memory, automatic tool/function calling, and robust error handling for building production-ready AI applications.
 
 ## Features
 
-- **Multi-Provider LLM Support**: Seamless integration with OpenAI, Groq, and Ollama
+- **Multi-Provider LLM Support**: Seamless integration with OpenAI, Anthropic, Groq, and Ollama
 - **Persistent Memory**: Long-term conversation memory using FAISS vector storage and embeddings
 - **Function Calling**: Automatic parsing and execution of tools with Google-style docstring support
 - **Streaming Support**: Real-time response streaming for interactive applications
@@ -65,6 +65,7 @@ pip install linden
 - Python >= 3.9
 - Dependencies automatically installed:
   - `openai` - OpenAI API client
+  - `anthropic` - Anthropic API client
   - `groq` - Groq API client  
   - `ollama` - Ollama local LLM client
   - `pydantic` - Data validation and serialization
@@ -170,6 +171,11 @@ speaker = "gpt-4"
 api_key = "your-openai-api-key"
 timeout = 30
 
+[anthropic]
+api_key = "your-anthropic-api-key"
+timeout = 30
+max_tokens = 1024 #example
+
 [groq]
 base_url = "https://api.groq.com/openai/v1"
 api_key = "your-groq-api-key" 
@@ -189,6 +195,7 @@ Set your API keys as environment variables:
 
 ```bash
 export OPENAI_API_KEY="your-openai-api-key"
+export ANTHROPIC_API_KEY="your-anthropic-api-key"
 export GROQ_API_KEY="your-groq-api-key"
 ```
 
@@ -212,6 +219,7 @@ The main agent orchestrator that handles:
 #### AI Clients
 Abstract interface with concrete implementations:
 - **OpenAiClient**: OpenAI GPT models
+- **AnthropicClient**: Anthropic Claude models
 - **GroqClient**: Groq inference API
 - **Ollama**: Local LLM execution
 
@@ -307,6 +315,14 @@ history = agent.memory.get_conversation("Current query")
 ### Provider-Specific Features
 
 ```python
+# Use Anthropic Claude models
+claude_agent = AgentRunner(
+    user_id="user123",
+    name="claude_agent",
+    model="claude-3-opus-20240229",
+    client=Provider.ANTHROPIC
+)
+
 # Use local Ollama models
 local_agent = AgentRunner(
     user_id="user123",
