@@ -11,6 +11,13 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Test"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -24,12 +31,21 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.10"
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build pytest pytest-cov
+          python -m pip install -r requirements.txt
+          
+      - name: Test with pytest
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        run: |
+          pytest test/ --cov=src/linden
+          
       - name: Build release distributions
         run: |
-          # NOTE: put your own distribution build steps here.
-          python -m pip install build
           python -m build
 
       - name: Upload distributions
@@ -43,13 +59,11 @@ jobs:
     needs:
       - release-build
     permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
 
-    # Dedicated environments with protections for publishing are strongly recommended.
-    # For more information, see: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules
     environment:
       name: pypi
+
 
     steps:
       - name: Retrieve release distributions
