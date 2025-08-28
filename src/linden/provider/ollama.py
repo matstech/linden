@@ -4,9 +4,9 @@ import logging
 from typing import Generator
 from ollama import ChatResponse, Options, GenerateResponse, Client
 from pydantic import BaseModel, TypeAdapter
+from .ai_client import AiClient
 from ..core import model
 from ..memory.agent_memory import AgentMemory
-from ..core.ai_client import AiClient
 from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class Ollama(AiClient):
         self.client = Client(timeout=ollama_config.timeout)
         super().__init__()
 
-    def query_llm(self, input: str, memory: AgentMemory, stream: bool = False, format: BaseModel = None) -> Generator[str, None, None] | tuple[str, list]:
+    def query_llm(self, prompt: str, memory: AgentMemory, stream: bool = False, output_format: BaseModel = None) -> Generator[str, None, None] | tuple[str, list]:
         """ Interaction with local LLM by official Ollama client
 
         Args:
@@ -37,7 +37,7 @@ class Ollama(AiClient):
         """
         try:
 
-            conversation = memory.get_conversation(user_input=input)
+            conversation = memory.get_conversation(user_input=prompt)
 
             response: ChatResponse = self.client.chat(
                 model=self.model,
@@ -45,7 +45,7 @@ class Ollama(AiClient):
                 messages=conversation,
                 stream=stream,
                 tools=self.tools,
-                format=format.model_json_schema() if format and not stream else None)
+                format=output_format.model_json_schema() if output_format and not stream else None)
 
             if not stream:
                 return self._build_final_response(memory=memory, response=response)
@@ -58,42 +58,33 @@ class Ollama(AiClient):
     def _generate_stream(self, memory: AgentMemory, response: ChatResponse) -> Generator[str, None, None]:
         """ Handles a streaming response by yielding content and updating memory.
 
-            Args:
-                memory (AgentMemory): Memory object to record the assistant response
-                response (ChatResponse): The streaming response generator
+        Note: This method only handles text content since streaming is disabled when tools are present.
 
-            Yields:
-                str: Chunks of text content from the model response
+        Args:
+            memory (AgentMemory): Memory object to record the assistant response
+            response (ChatResponse): The streaming response generator
+
+        Yields:
+            str: Chunks of text content from the model response
         """
         def stream_generator():
             full_response = []
-            tool_calls = None
             try:
                 for chunk in response:
                     if hasattr(chunk, 'message') and chunk.message:
                         content = chunk.message.content if hasattr(chunk.message, 'content') else str(chunk.message)
-                        # tool_calls can be None or a list
-                        if hasattr(chunk.message, 'tool_calls') and chunk.message.tool_calls:
-                            tool_calls = chunk.message.tool_calls
-                    else:
-                        continue
-                    if content:
-                        full_response.append(content)
-                        yield content
+                        
+                        if content:
+                            full_response.append(content)
+                            yield content
             except Exception as e:
                 logger.error("Error in stream_generator: %s", e)
                 raise
             finally:
-                # After streaming, record in persistent memory only if there are no tool_calls
-                # (tool results are saved by AgentRunner)
+                # Record the complete response in memory
                 if full_response:
                     complete_content = "".join(full_response)
-                    history_entry = {"role": "assistant", "content": complete_content}
-                    if tool_calls:
-                        history_entry["tool_calls"] = tool_calls
-
-                    if not tool_calls:
-                        memory.record(history_entry)
+                    memory.record({"role": "assistant", "content": complete_content})
         return stream_generator()
 
     def _build_final_response(self, memory: AgentMemory, response: ChatResponse|GenerateResponse) -> tuple[str, list]:

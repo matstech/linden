@@ -151,6 +151,10 @@ class AgentMemory:
     def memory(self) -> Memory:
         """Get the Memory instance from the singleton manager."""
         return self._memory_manager.get_memory()
+    
+    def get_system_prompt(self):
+        """Get the system prompt"""
+        return self.system_prompt
 
     def _set_system_prompt(self):
         """Initialize conversation history with system prompt."""

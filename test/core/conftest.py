@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from pydantic import BaseModel
 from linden.core.agent_runner import AgentRunner
-from linden.core.ai_client import AiClient, Provider
+from linden.provider.ai_client import AiClient, Provider
 from linden.core.model import ToolCall, Function, ToolError, ToolNotFound
 from linden.memory.agent_memory import AgentMemory
 from linden.config.configuration import ConfigManager
@@ -101,6 +101,7 @@ def mock_agent_runner(mock_ai_client):
         
         # Create the agent runner
         runner = AgentRunner(
+            user_id="test_user",
             name="test_agent",
             model="test-model",
             temperature=0.7,

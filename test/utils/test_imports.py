@@ -1,10 +1,7 @@
-"""
-Test importability of utils modules.
-"""
-
-import pytest
-
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 def test_import_utils_package():
     """Test that the utils package can be imported."""
     import linden.utils

@@ -1,7 +1,9 @@
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0303
 import os
-import pytest
 import tempfile
-from pathlib import Path
+import pytest
 
 from linden.config.configuration import (
     Configuration, ConfigManager, ModelsConfig, GroqConfig, 
@@ -93,7 +95,7 @@ class TestConfigManager:
         assert ConfigManager.is_initialized() is True
         assert isinstance(config, Configuration)
     
-    def test_get_with_default_path(self, temp_dir_with_config, monkeypatch):
+    def test_get_with_default_path(self, temp_dir_with_config):
         """Test that ConfigManager.get finds a config file in default locations."""
         # Change to the temp directory
         original_dir = os.getcwd()
@@ -164,6 +166,7 @@ timeout = 60
 
 [memory]
 path = "/tmp/linden-memory"
+collection_name= "test-memories"
 """)
         
         # Reload the config

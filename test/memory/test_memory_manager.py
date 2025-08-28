@@ -1,9 +1,11 @@
-import pytest
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 from unittest.mock import patch, MagicMock
 import threading
 
 from linden.memory.agent_memory import MemoryManager
-from linden.config.configuration import ConfigManager
 
 
 class TestMemoryManager:

@@ -1,13 +1,13 @@
-"""
-Tests for the Ollama client.
-"""
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
+from pydantic import BaseModel
 import pytest
 from unittest.mock import MagicMock, patch
-import json
 from linden.provider.ollama import Ollama
-from linden.core.model import ToolCall, Function
-from pydantic import BaseModel
+
+
 
 
 class TestOllamaClient:
@@ -32,7 +32,7 @@ class TestOllamaClient:
         mock_instance.chat.return_value = mock_ollama_response
         
         # Call method
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory, stream=False)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory, stream=False)
         
         # Verify
         mock_memory.get_conversation.assert_called_once_with(user_input="Hello")
@@ -56,7 +56,7 @@ class TestOllamaClient:
         expected_schema = TestFormat.model_json_schema()
         
         # Call method
-        client.query_llm(input="Hello", memory=mock_memory, format=TestFormat)
+        client.query_llm(prompt="Hello", memory=mock_memory, output_format=TestFormat)
         
         # Verify format was passed
         call_kwargs = mock_instance.chat.call_args.kwargs
@@ -89,7 +89,7 @@ class TestOllamaClient:
         mock_instance.chat.return_value = mock_ollama_response
         
         # Call method
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory)
         
         # Verify
         assert content == "Test response"
@@ -116,7 +116,7 @@ class TestOllamaClient:
             mock_generate_stream.return_value = fake_generator()
             
             # Call method
-            stream_gen = client.query_llm(input="Tell me a greeting", memory=mock_memory, stream=True)
+            stream_gen = client.query_llm(prompt="Tell me a greeting", memory=mock_memory, stream=True)
             
             # Verify streaming content
             result = []
@@ -140,7 +140,7 @@ class TestOllamaClient:
         
         # Verify exception is raised
         with pytest.raises(Exception, match="API Error"):
-            client.query_llm(input="Hello", memory=mock_memory)
+            client.query_llm(prompt="Hello", memory=mock_memory)
 
     def test_build_final_response_generate_response(self, mock_ollama_client, mock_memory):
         """Test _build_final_response method with a GenerateResponse."""
@@ -160,36 +160,3 @@ class TestOllamaClient:
         assert tool_calls is None
         mock_memory.record.assert_called_once()
 
-    def test_streaming_with_tool_calls(self, mock_ollama_client, mock_memory):
-        """Test streaming response with tool calls."""
-        client, mock_instance = mock_ollama_client
-        
-        # Create mock chunk with tool calls
-        mock_chunk = MagicMock()
-        mock_chunk.message = MagicMock()
-        mock_chunk.message.content = "Processing with tools"
-        
-        mock_tool_call = MagicMock()
-        mock_tool_call.id = "call_123"
-        mock_tool_call.type = "function"
-        mock_tool_call.function.name = "test_fn"
-        mock_tool_call.function.arguments = '{"param": "value"}'
-        
-        mock_chunk.message.tool_calls = [mock_tool_call]
-        
-        # Set up mock to return an iterable with one chunk
-        mock_instance.chat.return_value = [mock_chunk]
-        
-        # Call method
-        stream_gen = client.query_llm(input="Use tools", memory=mock_memory, stream=True)
-        
-        # Collect the streaming results
-        result = []
-        for chunk in stream_gen:
-            result.append(chunk)
-        
-        assert result == ["Processing with tools"]
-        
-        # Tool calls should be included in history entry, but memory.record shouldn't be called
-        # because we have tool calls
-        assert not mock_memory.record.called

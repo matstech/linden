@@ -1,20 +1,16 @@
-"""
-Tests for the agent_runner module which contains the AgentRunner class.
-"""
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
+from unittest.mock import patch, MagicMock
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock, call
-import json
-import inspect
-from typing import Dict, Any, List, Callable
 
 from linden.core.agent_runner import AgentRunner
-from linden.core.model import ToolCall, Function, ToolCalls, ToolError, ToolNotFound
-from linden.core.ai_client import AiClient, Provider
+from linden.core.model import ToolCall, Function, ToolError, ToolNotFound
 from linden.memory.agent_memory import AgentMemory
 
 
-class TestToolFunction:
+class MockToolFunction:
     """Class for testing tool functions."""
     
     def __init__(self, return_value=None, is_async=False):
@@ -57,6 +53,7 @@ async def test_agent_runner_initialization(mock_ai_client):
     
     # Create an agent runner
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -77,6 +74,7 @@ async def test_agent_runner_with_memory(mock_ai_client, mock_agent_memory):
     """Test AgentRunner with pre-initialized memory."""
     # Create an agent runner with default memory
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -128,6 +126,7 @@ async def test_agent_runner_tool_call_sync():
     
     # Create an agent runner with the tool
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -165,6 +164,7 @@ async def test_agent_runner_tool_call_async():
     
     # Create an agent runner with the async tool
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -189,6 +189,7 @@ async def test_agent_runner_tool_call_not_found():
     """Test tool_call method with non-existent tool."""
     # Create an agent runner with no tools
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -226,6 +227,7 @@ async def test_agent_runner_tool_call_error():
     
     # Create an agent runner with the error tool
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -281,7 +283,8 @@ async def test_agent_runner_run():
     with patch('linden.core.agent_runner.Ollama', return_value=mock_client):
         # Create agent
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",
@@ -309,7 +312,8 @@ async def test_agent_runner_run_no_tools_used():
     with patch('linden.core.agent_runner.Ollama', return_value=mock_client):
         # Create agent
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",
@@ -327,6 +331,7 @@ def test_agent_runner_with_system_prompt():
     """Test AgentRunner with custom system prompt."""
     # Create an agent with a custom system prompt
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -369,6 +374,7 @@ async def test_agent_runner_multiple_tool_calls():
     
     # Create an agent with both tools
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -419,6 +425,7 @@ def test_agent_runner_parse_tools():
     
     # Create agent with tools
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
@@ -451,7 +458,8 @@ def test_agent_runner_reset():
         
         # Create agent
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",
@@ -478,6 +486,7 @@ def test_agent_runner_with_output_type():
     
     # Create agent with output_type
     agent = AgentRunner(
+        user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,

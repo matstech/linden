@@ -59,6 +59,19 @@ class OpenAIConfig:
     """
     api_key: str
     timeout: int
+    
+@dataclass
+class AnthropicConfig:
+    """
+    Configuration for Anthropic API client.
+    
+    Attributes:
+        api_key: Authentication key for Anthropic API
+        timeout: Request timeout in seconds
+    """
+    api_key: str
+    max_tokens: int
+    timeout: int
 
 @dataclass
 class MemoryConfig:
@@ -70,7 +83,7 @@ class MemoryConfig:
         collection_name: Name of the memory collection
     """
     path: str
-    collection_name:str
+    collection_name: str
 
 
 @dataclass
@@ -92,6 +105,7 @@ class Configuration:
     groq: GroqConfig
     ollama: OllamaConfig
     openai: OpenAIConfig
+    anthropic: AnthropicConfig
     memory: MemoryConfig
 
     @classmethod
@@ -118,6 +132,7 @@ class Configuration:
             groq=GroqConfig(**data['groq']),
             ollama=OllamaConfig(**data['ollama']),
             openai=openai_config,
+            anthropic=AnthropicConfig(**data['anthropic']),
             memory=MemoryConfig(**data['memory'])
         )
 

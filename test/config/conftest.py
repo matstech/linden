@@ -1,8 +1,10 @@
 import os
+import sys
 import pytest
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 @pytest.fixture
 def temp_config_file():
@@ -123,6 +125,7 @@ timeout = 60
 
 [memory]
 path = "/tmp/linden-memory"
+collection_name = "test_memories"
 """)
     
     yield temp_dir

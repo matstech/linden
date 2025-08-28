@@ -1,5 +1,6 @@
-import pytest
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0303
 
 class TestConfigImports:
     """Test that all modules can be imported correctly."""

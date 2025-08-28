@@ -5,7 +5,7 @@ Fixtures for provider tests.
 import pytest
 from unittest.mock import MagicMock, patch
 from linden.provider import OpenAiClient, GroqClient, Ollama
-from linden.core.ai_client import AiClient
+from linden.provider.ai_client import AiClient
 from linden.core.model import ToolCall, Function
 from linden.memory.agent_memory import AgentMemory
 

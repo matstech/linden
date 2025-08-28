@@ -1,13 +1,12 @@
-"""
-Tests for the OpenAI client.
-"""
-
-import pytest
-from unittest.mock import MagicMock, patch
-import json
-from linden.provider.openai import OpenAiClient
-from linden.core.model import ToolCall, Function
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
+from unittest.mock import MagicMock
 from pydantic import BaseModel
+import pytest
+from linden.provider.openai import OpenAiClient
+
 
 
 class TestOpenAiClient:
@@ -32,7 +31,7 @@ class TestOpenAiClient:
         mock_instance.chat.completions.create.return_value = mock_openai_response
         
         # Call method
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory, stream=False)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory, stream=False)
         
         # Verify
         mock_memory.get_conversation.assert_called_once_with(user_input="Hello")
@@ -53,7 +52,7 @@ class TestOpenAiClient:
             result: str
         
         # Call method
-        client.query_llm(input="Hello", memory=mock_memory, format=TestFormat)
+        client.query_llm(prompt="Hello", memory=mock_memory, output_format=TestFormat)
         
         # Verify response_format was passed
         call_kwargs = mock_instance.chat.completions.create.call_args.kwargs
@@ -86,7 +85,7 @@ class TestOpenAiClient:
         mock_instance.chat.completions.create.return_value = mock_openai_response
         
         # Call method
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory)
         
         # Verify
         assert content == "Test response"
@@ -113,7 +112,7 @@ class TestOpenAiClient:
         mock_instance.chat.completions.create.return_value = [mock_chunk1, mock_chunk2]
         
         # Call method
-        stream_gen = client.query_llm(input="Tell me a greeting", memory=mock_memory, stream=True)
+        stream_gen = client.query_llm(prompt="Tell me a greeting", memory=mock_memory, stream=True)
         
         # Verify streaming content
         result = []
@@ -137,7 +136,7 @@ class TestOpenAiClient:
         
         # Verify exception is raised
         with pytest.raises(Exception, match="API Error"):
-            client.query_llm(input="Hello", memory=mock_memory)
+            client.query_llm(prompt="Hello", memory=mock_memory)
 
     def test_build_final_response_without_choices(self, mock_openai_client, mock_memory):
         """Test _build_final_response method when response has no choices."""

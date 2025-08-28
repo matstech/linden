@@ -3,7 +3,9 @@
 import re
 from docstring_parser import parse
 
-def parse_google_docstring(docstring: str, func_name: str = "function_name", include_returns: bool = True) -> dict:
+from linden.provider.ai_client import Provider
+
+def parse_google_docstring(docstring: str, func_name: str = "function_name", include_returns: bool = True, provider: Provider = Provider.OLLAMA) -> dict:
     """
     Parse Google-style docstring using docstring-parser library.
     
@@ -20,10 +22,15 @@ def parse_google_docstring(docstring: str, func_name: str = "function_name", inc
     parsed = parse(docstring)
 
     # Build basic structure
+    param_name = "parameters"
+
+    if provider == Provider.ANTHROPIC:
+        param_name = "input_schema"
+
     result = {
         "name": func_name,
         "description": _build_description(parsed),
-        "parameters": {
+        f"{param_name}": {
             "type": "object",
             "properties": {},
             "required": []
@@ -61,11 +68,11 @@ def parse_google_docstring(docstring: str, func_name: str = "function_name", inc
             # Extract constraints from description
             param_schema.update(_extract_constraints(param.description))
 
-        result["parameters"]["properties"][param.arg_name] = param_schema
+        result[param_name]["properties"][param.arg_name] = param_schema
 
         # Add to required if not optional
         if not param.is_optional:
-            result["parameters"]["required"].append(param.arg_name)
+            result[param_name]["required"].append(param.arg_name)
 
     # Add returns section if present and requested
     if include_returns and parsed.returns and parsed.returns.description:

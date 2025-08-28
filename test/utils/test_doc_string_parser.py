@@ -1,8 +1,7 @@
-"""
-Tests for doc_string_parser module.
-"""
-
-import pytest
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 from linden.utils.doc_string_parser import (
     parse_google_docstring, 
     _build_description, 

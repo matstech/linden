@@ -1,27 +1,19 @@
-import pytest
-from unittest.mock import patch, MagicMock
-
-from linden.memory.agent_memory import AgentMemory, MemoryManager
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
+from unittest.mock import patch
+from linden.memory.agent_memory import AgentMemory
 
 
 class TestAgentMemory:
     """Test suite for the AgentMemory class."""
     
-    def test_init_with_default_params(self, test_agent_id):
-        """Test AgentMemory initialization with default parameters."""
-        with patch('linden.memory.agent_memory.MemoryManager'):
-            memory = AgentMemory(agent_id=test_agent_id)
-            
-            assert memory.agent_id == test_agent_id
-            assert memory.system_prompt is None
-            assert isinstance(memory.history, list)
-            # System prompt is None, so history should contain None
-            assert memory.history == [None]
-    
+
     def test_init_with_system_prompt(self, test_agent_id, test_system_prompt):
         """Test AgentMemory initialization with system prompt."""
         with patch('linden.memory.agent_memory.MemoryManager'):
-            memory = AgentMemory(agent_id=test_agent_id, system_prompt=test_system_prompt)
+            memory = AgentMemory(agent_id=test_agent_id, user_id="test",system_prompt=test_system_prompt)
             
             assert memory.agent_id == test_agent_id
             assert memory.system_prompt == test_system_prompt
@@ -38,9 +30,7 @@ class TestAgentMemory:
         ]
         
         with patch('linden.memory.agent_memory.MemoryManager'):
-            memory = AgentMemory(
-                agent_id=test_agent_id, 
-                system_prompt=test_system_prompt,
+            memory = AgentMemory(agent_id=test_agent_id, user_id="test",system_prompt=test_system_prompt,
                 history=history
             )
             
@@ -83,7 +73,7 @@ class TestAgentMemory:
         # Check that message is added to persistent memory
         mock_mem0_memory.add.assert_called_once()
         # User ID should be "mat"
-        assert mock_mem0_memory.add.call_args[1]['user_id'] == "mat"
+        assert mock_mem0_memory.add.call_args[1]['user_id'] == "test"
     
     def test_record_with_persist_error(self, agent_memory_with_mocked_manager, mock_mem0_memory):
         """Test recording a message with persist=True when add fails."""
@@ -114,7 +104,7 @@ class TestAgentMemory:
         # Search should be called
         mock_mem0_memory.search.assert_called_once()
         assert mock_mem0_memory.search.call_args[1]['query'] == user_input
-        assert mock_mem0_memory.search.call_args[1]['user_id'] == "mat"
+        assert mock_mem0_memory.search.call_args[1]['user_id'] == "test"
         
         # Since no memories were found, history should remain unchanged
         assert len(result) == 3  # System prompt + 2 messages

@@ -5,8 +5,10 @@ import json
 from typing import Callable, Generator
 from pydantic import BaseModel, ValidationError
 from requests import RequestException
+
+from linden.provider.anthropic import AnthropicClient
 from ..memory.agent_memory import AgentMemory
-from .ai_client import Provider
+from ..provider.ai_client import Provider
 from ..utils.doc_string_parser import parse_google_docstring
 from ..provider.groq import GroqClient
 from .model import ToolCall, ToolError, ToolNotFound
@@ -14,6 +16,7 @@ from ..provider.ollama import Ollama
 from ..provider.openai import OpenAiClient
 
 logger = logging.getLogger(__name__)
+
 
 class AgentRunner:
     """ Define Agent features """
@@ -49,7 +52,7 @@ class AgentRunner:
         self.retries = retries
         self.output_type = output_type
         self.history = []
-        self.tool_desc = self._parse_tools()
+        self.tool_desc = self._parse_tools(provider=client)
         self._set_system_prompt(system_prompt)
         self._set_client(client=client)
         self.memory = AgentMemory(agent_id=self.name,
@@ -72,7 +75,7 @@ class AgentRunner:
             or a tuple of (content, tool_calls) where content is the model's output and 
             tool_calls is a list of tool calls (or None) (if stream=False).
         """
-        return self.client.query_llm(memory=self.memory, input=prompt,stream=stream, format=output_format)
+        return self.client.query_llm(prompt=prompt, memory=self.memory, stream=stream, output_format=output_format)
 
     def run(self, user_question: str, stream: bool = False) -> Generator[str, None, None] | BaseModel | str | list:
         """ Execute agent query on LLM
@@ -91,6 +94,7 @@ class AgentRunner:
         # ensure client has all the tools set
         if self.client.tools is not None and len(self.client.tools) is not len(self.tools):
             self.client.tools = self.tool_desc
+            stream = False # stream must be set to False if there are tools set
         u_input = user_question
         for turn in range(0, self.retries+1):
             logger.info("Turn %d", turn)
@@ -216,7 +220,7 @@ class AgentRunner:
             system_prompt = f"{system_prompt}.\nThe JSON object must use the schema: {json.dumps(self.output_type.model_json_schema(), indent=2)}"
         self.system_prompt = {"role": "system", "content": system_prompt if system_prompt is not None else ""}
 
-    def _parse_tools(self):
+    def _parse_tools(self, provider: Provider):
         """
         Parse the docstrings of available tools into a format suitable for LLM function calling.
         
@@ -229,8 +233,15 @@ class AgentRunner:
         if self.tools and len(self.tools) > 0:
             tool_desc = []
             for tool in self.tools:
-                doc_string = parse_google_docstring(docstring=tool.__doc__, func_name=tool.__name__)
-                tool_desc.append({"type":"function", "function":doc_string})
+                doc_string = parse_google_docstring(
+                    docstring=tool.__doc__, 
+                    func_name=tool.__name__, 
+                    include_returns= False if provider == Provider.ANTHROPIC else True,
+                    provider=provider)
+                if provider == Provider.ANTHROPIC:
+                    tool_desc.append(doc_string)
+                else:
+                    tool_desc.append({"type":"function", "function":doc_string})
             return tool_desc
 
     def _set_client(self, client: Provider):
@@ -248,5 +259,7 @@ class AgentRunner:
                 self.client = GroqClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
             case Provider.OPENAI:
                 self.client = OpenAiClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
+            case Provider.ANTHROPIC:
+                self.client = AnthropicClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
             case _:
                 self.client = Ollama(model=self.model, temperature=self.temperature, tools=self.tool_desc)
