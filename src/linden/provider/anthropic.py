@@ -44,7 +44,7 @@ class AnthropicClient(AiClient):
                 temperature=self.temperature,
                 stream=stream,
                 messages=memory.get_conversation(user_input=prompt)[1:],
-                system=self._inject_output_format_info(memory.get_system_prompt(), output_format),
+                system=[self._inject_output_format_info(memory.get_system_prompt(), output_format)],
                 tools=self.tools  if self.tools and len(self.tools) > 0 else [])
 
             if stream:
@@ -128,6 +128,7 @@ class AnthropicClient(AiClient):
         return (content, tc)
 
     def _inject_output_format_info(self, system_prompt: str, output_format: bool):
+        text = system_prompt['content']
         if output_format:
-            return f"""{system_prompt}.\nThe output format must be follow the structure:\n{output_format.model_json_schema()}."""
-        return system_prompt
+            text = f"""{text}.\nThe output format must be follow the structure:\n{output_format.model_json_schema()}."""
+        return {"type":"text", "text": text}

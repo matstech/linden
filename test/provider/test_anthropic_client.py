@@ -39,7 +39,7 @@ def mock_memory():
         {"role": "user", "content": "Hello"},
         {"role": "assistant", "content": "Hi there!"}
     ]
-    memory.get_system_prompt.return_value = "You are a helpful assistant"
+    memory.get_system_prompt.return_value = {"content": "You are a helpful assistant"}
     return memory
 
 
@@ -133,7 +133,8 @@ class TestAnthropicClient:
         
         # Verify the system prompt was modified to include format info
         call_kwargs = mock_instance.messages.create.call_args.kwargs
-        assert "output format must be follow the structure" in call_kwargs["system"]
+        system_text = call_kwargs["system"][0]["text"]
+        assert "output format must be follow the structure" in system_text
 
     def test_query_llm_with_tools(self, mock_anthropic_client, mock_memory, mock_anthropic_tool_response):
         """Test querying the LLM with tools."""
@@ -251,22 +252,23 @@ class TestAnthropicClient:
             name: str
             age: int
         
-        system_prompt = "You are a helpful assistant"
+        system_prompt = {"content": "You are a helpful assistant"}
         result = client._inject_output_format_info(system_prompt, TestFormat)
         
-        assert "You are a helpful assistant" in result
-        assert "output format must be follow the structure" in result
+        assert "You are a helpful assistant" in result["text"]
+        assert "output format must be follow the structure" in result["text"]
         # The method calls model_json_schema() which returns the actual schema, not the string
-        assert "'name'" in result  # Check that the schema content is present
+        assert "'name'" in result["text"]  # Check that the schema content is present
 
     def test_inject_output_format_info_without_format(self, mock_anthropic_client):
         """Test _inject_output_format_info method without a format."""
         client, _ = mock_anthropic_client
         
-        system_prompt = "You are a helpful assistant"
+        system_prompt = {"content": "You are a helpful assistant"}
         result = client._inject_output_format_info(system_prompt, False)
         
-        assert result == system_prompt
+        expected = {"type": "text", "text": "You are a helpful assistant"}
+        assert result == expected
 
     def test_generate_stream_error_handling(self, mock_anthropic_client, mock_memory):
         """Test error handling in _generate_stream method."""
