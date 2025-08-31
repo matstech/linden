@@ -1,13 +1,17 @@
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0303
 import os
-import pytest
 import tomllib
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, mock_open
+import pytest
+
 
 from linden.config.configuration import (
     Configuration, ConfigManager, ModelsConfig, GroqConfig, 
-    OllamaConfig, OpenAIConfig, MemoryConfig
+    OllamaConfig, OpenAIConfig, AnthropicConfig, MemoryConfig
 )
 
 
@@ -39,8 +43,14 @@ timeout = 30
 api_key = ""
 timeout = 60
 
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
+timeout = 60
+
 [memory]
 path = "/tmp/linden-memory"
+collection_name= "test_memories"
 """
             f.write(data_str.encode('utf-8'))
         
@@ -74,8 +84,14 @@ timeout = 30
 api_key = ""
 timeout = 60
 
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
+timeout = 60
+
 [memory]
 path = "/tmp/linden-memory"
+collection_name= "test_memories"
 """
             f.write(data_str.encode('utf-8'))
         
@@ -141,8 +157,14 @@ timeout = 30
 api_key = "key"
 timeout = 60
 
+[anthropic]
+api_key = "anthropic-key"
+max_tokens = 4096
+timeout = 60
+
 [memory]
 path = "/tmp/path"
+collection_name= "test_memories"
 """)
             
             # Override the default paths to include our temp file

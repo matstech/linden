@@ -1,14 +1,14 @@
-"""
-Tests for edge cases and potential error scenarios in the core module.
-"""
-
-import pytest
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 from unittest.mock import patch, MagicMock, AsyncMock
 import json
 import asyncio
+import pytest
 
 from linden.core.agent_runner import AgentRunner
-from linden.core.ai_client import AiClient, Provider
+from linden.provider.ai_client import AiClient, Provider
 from linden.core.model import ToolCall, Function, ToolError, ToolNotFound
 from linden.memory.agent_memory import AgentMemory
 
@@ -34,7 +34,8 @@ def test_agent_runner_empty_tools():
         mock_openai_class.return_value = mock_openai
         
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",  # Use a known model name
             temperature=0.7,
             system_prompt="You are a test assistant.",
@@ -97,7 +98,8 @@ def test_agent_runner_with_non_callable_tool():
         
         # Create an agent with valid tools
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",
@@ -194,7 +196,8 @@ def test_agent_runner_with_empty_input():
         
         # Create an agent
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",
@@ -273,7 +276,8 @@ def test_agent_runner_tool_response_too_large():
         
         # Create an agent with the large response tool
         agent = AgentRunner(
-            name="test_agent",
+        user_id="test_user",
+        name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",

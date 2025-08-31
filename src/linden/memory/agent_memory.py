@@ -1,11 +1,13 @@
-import os
+# pylint: disable=C0301
+"""Module wrap agent memory options and functionalities """
+import logging
 import threading
-import time
 from typing import Optional
 from mem0 import Memory
 
 from ..config.configuration import ConfigManager
 
+logger = logging.getLogger(__name__)
 
 class MemoryManager:
     """
@@ -22,10 +24,10 @@ class MemoryManager:
     - Agent isolation through agent_id filtering
     - Consistent memory configuration across all agents
     """
-    
+
     _instance: Optional['MemoryManager'] = None
     _lock = threading.Lock()
-    
+
     def __new__(cls) -> 'MemoryManager':
         if cls._instance is None:
             with cls._lock:
@@ -34,20 +36,22 @@ class MemoryManager:
                     cls._instance._memory = None
                     cls._instance._memory_lock = threading.Lock()
         return cls._instance
-    
+
     def get_memory(self) -> Memory:
         """Get or create the Memory instance in a thread-safe manner."""
         if self._memory is None:
+            if not hasattr(self, "_memory_lock"):
+              self._memory_lock = threading.Lock()
             with self._memory_lock:
                 if self._memory is None:
                     self._memory = self._create_memory()
         return self._memory
-    
+
     def reset_memory(self) -> None:
         """Reset the Memory instance for testing purposes."""
         with self._memory_lock:
             self._memory = None
-    
+
     def get_all_agent_memories(self, agent_id: str = None):
         """
         Get all memories for a specific agent or all agents.
@@ -68,10 +72,11 @@ class MemoryManager:
             try:
                 # This might not work in all versions, so we'll catch the exception
                 return memory.get_all(user_id="*")
-            except:
-                # Fallback: return empty list since we can't get all without specific IDs
+            except Exception:
+                # Fallback: return  empty list since we can't get all without specific IDs
+                logger.warning("Warning: can't get agents memory without specific user id")
                 return []
-    
+
     def _create_memory(self) -> Memory:
         """Create a new Memory instance with current configuration."""
         conf = ConfigManager.get()
@@ -93,7 +98,7 @@ class MemoryManager:
             "vector_store": {
                 "provider": "faiss",
                 "config": {
-                    "collection_name": f"py-jrag-memory",
+                    "collection_name": conf.memory.collection_name,
                     "path": conf.memory.path,
                     "distance_strategy":"cosine",
                     "normalize_L2": "True"
@@ -122,8 +127,7 @@ class AgentMemory:
     - Memory retrieval is filtered by agent_id to maintain isolation
     - This design prevents index conflicts while enabling efficient memory usage
     """
-    
-    def __init__(self, agent_id: str, system_prompt: str = None, history: list[dict] = None):
+    def __init__(self, agent_id: str, user_id: str,  system_prompt: str = None, history: list[dict] = None):
         """
         Initialize AgentMemory for a specific agent.
         
@@ -132,25 +136,30 @@ class AgentMemory:
             system_prompt (str, optional): System prompt to initialize conversation history
         """
         self.agent_id = agent_id
+        self.user_id = user_id
         self.system_prompt = system_prompt
         self._memory_manager = MemoryManager()
         self._write_lock = threading.Lock()
-        
+
         if history is None:
             self.history = []
         else:
             self.history = history
         self._set_system_prompt()
-    
+
     @property
     def memory(self) -> Memory:
         """Get the Memory instance from the singleton manager."""
         return self._memory_manager.get_memory()
     
+    def get_system_prompt(self):
+        """Get the system prompt"""
+        return self.system_prompt
+
     def _set_system_prompt(self):
         """Initialize conversation history with system prompt."""
         self.history = [self.system_prompt]
-        
+
     def record(self, message: str, persist: bool = False):
         """
         Record a message in both persistent memory and conversation history.
@@ -163,17 +172,15 @@ class AgentMemory:
             self.history.append(message)
         elif isinstance(message, str):
             self.history.append({"role": "user", "content": message})
-        
+
         if persist:
             with self._write_lock:
                 # Add to persistent memory first
                 try:
-                    self.memory.add(message, user_id="mat", infer=False)
+                    self.memory.add(message, user_id=self.user_id, infer=False)
                 except Exception as e:
-                    print(f"Warning: Failed to persist message: {e}") #TODO: logger
-            
-            
-    
+                    logger.warning("Warning: Failed to persist message: %s", e)
+
     def get_conversation(self, user_input: str):
         """
         Build conversation context including system prompt, relevant memories, and current input.
@@ -184,12 +191,11 @@ class AgentMemory:
         Returns:
             list: Conversation messages including system prompt, relevant memories, and current input
         """
-        
         try:
-            search_result = self.memory.search(query=user_input, 
-                                               user_id="mat", 
+            search_result = self.memory.search(query=user_input,
+                                               user_id=self.user_id,
                                                limit=10)
-            
+
             if search_result.get('results'):
                 formatted_memories = "\n".join([f"- {mem['memory']}" for mem in search_result.get('results')])
                 meta_prompt = f"""
@@ -201,22 +207,14 @@ class AgentMemory:
 
                 Here is some relevant context from past conversations:\n{formatted_memories}
                 ---
-                """ 
+                """
                 self.history.append({"role": "user", "content": meta_prompt})
         except Exception as e:
-            print(f"Warning: Memory search failed, using local history only: {e}")
-        
+            logger.warning("Warning: Memory search failed, using local history only: %s", e)
+
         return self.history
-    
+
     def reset(self):
         """Reset agent memory and conversation history."""
         self.history = []
-        # with self._write_lock:
-        #     try:
-        #         self.memory.delete_all(agent_id=self.agent_id)
-        #         # Wait for deletion to complete
-        #         time.sleep(0.1)
-        #     except Exception as e:
-        #         print(f"Warning: Failed to clear persistent memory: {e}")
-            
         self._set_system_prompt()

@@ -1,10 +1,7 @@
-"""
-Tests for the model module which contains the ToolCall, ToolError, ToolNotFound classes.
-"""
-
-import pytest
-from typing import Dict, Any, List
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 from linden.core.model import ToolCall, ToolError, ToolNotFound, Function, ToolCalls
 
 

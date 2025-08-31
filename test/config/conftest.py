@@ -1,8 +1,10 @@
 import os
+import sys
 import pytest
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 @pytest.fixture
 def temp_config_file():
@@ -28,8 +30,14 @@ timeout = 30
 api_key = "openai-test-key"
 timeout = 60
 
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
+timeout = 60
+
 [memory]
 path = "/tmp/linden-memory"
+collection_name = "test_memories"
 """)
         temp_path = temp.name
     
@@ -120,8 +128,14 @@ timeout = 30
 api_key = "openai-test-key"
 timeout = 60
 
+[anthropic]
+api_key = "anthropic-test-key"
+max_tokens = 4096
+timeout = 60
+
 [memory]
 path = "/tmp/linden-memory"
+collection_name = "test_memories"
 """)
     
     yield temp_dir

@@ -35,6 +35,9 @@ def test_agent_id():
     return "test-agent-id"
 
 
+
+
+
 @pytest.fixture
 def test_system_prompt():
     """System prompt for testing."""
@@ -44,7 +47,7 @@ def test_system_prompt():
 @pytest.fixture
 def agent_memory_with_mocked_manager(mock_memory_manager, test_agent_id, test_system_prompt):
     """AgentMemory instance with mocked Memory manager."""
-    agent_mem = AgentMemory(agent_id=test_agent_id, system_prompt=test_system_prompt)
+    agent_mem = AgentMemory(agent_id=test_agent_id, user_id="test", system_prompt=test_system_prompt)
     return agent_mem
 
 
@@ -85,6 +88,7 @@ timeout = 60
 
 [memory]
 path = "{temp_memory_path}"
+collection_name = "test_memories"
 """
         temp.write(config_content.encode('utf-8'))
         temp_path = temp.name

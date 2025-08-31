@@ -1,9 +1,7 @@
-"""
-Test importability of provider modules.
-"""
-
-import pytest
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 
 def test_import_provider_package():
     """Test that the provider package can be imported."""
@@ -35,7 +33,7 @@ def test_provider_init_has_all():
     """Test that __all__ is properly defined in the __init__.py file."""
     import linden.provider
     assert hasattr(linden.provider, "__all__")
-    assert set(linden.provider.__all__) == {"OpenAiClient", "GroqClient", "Ollama"}
+    assert set(linden.provider.__all__) == {"OpenAiClient", "GroqClient", "Ollama","Provider"}
 
 
 def test_provider_modules_can_be_imported_directly():

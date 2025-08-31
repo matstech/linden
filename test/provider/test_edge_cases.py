@@ -1,12 +1,10 @@
-"""
-Tests for edge cases and error handling in provider clients.
-"""
-
+# pylint: disable=C0114
+# pylint: disable=C0115
+# pylint: disable=C0116
+# pylint: disable=C0303
 import pytest
 from unittest.mock import MagicMock, patch
-from linden.provider import OpenAiClient, GroqClient, Ollama
-from linden.core.model import ToolCall, Function
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 
 class TestProviderEdgeCases:
@@ -23,7 +21,7 @@ class TestProviderEdgeCases:
         mock_instance.chat.completions.create.return_value = mock_response
         
         # Should handle gracefully
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory)
         assert content == ''
         assert tool_calls is None
 
@@ -40,7 +38,7 @@ class TestProviderEdgeCases:
         mock_instance.chat.completions.create.return_value = mock_response
         
         # Should handle gracefully
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory)
         assert content == ''
         assert tool_calls is None
 
@@ -59,7 +57,7 @@ class TestProviderEdgeCases:
         mock_instance.chat.return_value = mock_response
         
         # Should handle gracefully
-        content, tool_calls = client.query_llm(input="Hello", memory=mock_memory)
+        content, tool_calls = client.query_llm(prompt="Hello", memory=mock_memory)
         # For ollama, content comes from the response attribute directly in this case
         assert content == ""
         assert tool_calls is None
@@ -96,7 +94,7 @@ class TestProviderEdgeCases:
         
         # Should raise a validation error when processing tool calls
         with pytest.raises(Exception):
-            client.query_llm(input="Hello", memory=mock_memory)
+            client.query_llm(prompt="Hello", memory=mock_memory)
 
     def test_invalid_json_in_tool_arguments(self, mock_groq_client, mock_memory):
         """Test handling of invalid JSON in tool arguments."""
@@ -145,7 +143,7 @@ class TestProviderEdgeCases:
             
             # Now the test should pass as we expect an exception
             with pytest.raises(Exception):
-                client.query_llm(input="Hello", memory=mock_memory)
+                client.query_llm(prompt="Hello", memory=mock_memory)
 
     def test_streaming_with_errors(self, mock_ollama_client, mock_memory):
         """Test streaming with errors mid-stream."""
@@ -160,7 +158,7 @@ class TestProviderEdgeCases:
         mock_instance.chat.return_value = error_generator()
         
         # Call method
-        stream_gen = client.query_llm(input="Tell me a greeting", memory=mock_memory, stream=True)
+        stream_gen = client.query_llm(prompt="Tell me a greeting", memory=mock_memory, stream=True)
         
         # Should raise the exception
         with pytest.raises(Exception, match="Stream error"):
@@ -183,7 +181,7 @@ class TestProviderEdgeCases:
         mock_instance.chat.completions.create.return_value = [mock_empty_chunk, mock_chunk]
         
         # Call method
-        stream_gen = client.query_llm(input="Tell me something", memory=mock_memory, stream=True)
+        stream_gen = client.query_llm(prompt="Tell me something", memory=mock_memory, stream=True)
         
         # Should only yield the valid content
         result = []
@@ -197,7 +195,7 @@ class TestProviderEdgeCases:
 class TestFormatValidation:
     """Tests for format validation in responses."""
 
-    class TestFormat(BaseModel):
+    class ValidationFormat(BaseModel):
         """Test pydantic model for validation."""
         result: str
         count: int
@@ -216,7 +214,7 @@ class TestFormatValidation:
         mock_instance.chat.completions.create.return_value = mock_resp
         
         # Call with format parameter
-        content, _ = client.query_llm(input="Give me a result", memory=mock_memory, format=self.TestFormat)
+        content, _ = client.query_llm(prompt="Give me a result", memory=mock_memory, output_format=self.ValidationFormat)
         
         # Verify the format parameter was passed
         call_kwargs = mock_instance.chat.completions.create.call_args.kwargs
@@ -238,7 +236,7 @@ class TestFormatValidation:
         mock_instance.chat.completions.create.return_value = mock_resp
         
         # Call with format parameter
-        content, _ = client.query_llm(input="Give me a result", memory=mock_memory, format=self.TestFormat)
+        content, _ = client.query_llm(prompt="Give me a result", memory=mock_memory, output_format=self.ValidationFormat)
         
         # Verify the format parameter was passed
         call_kwargs = mock_instance.chat.completions.create.call_args.kwargs
@@ -257,10 +255,10 @@ class TestFormatValidation:
         mock_instance.chat.return_value = mock_resp
         
         # Call with format parameter
-        content, _ = client.query_llm(input="Give me a result", memory=mock_memory, format=self.TestFormat)
+        content, _ = client.query_llm(prompt="Give me a result", memory=mock_memory, output_format=self.ValidationFormat)
         
         # Verify the format parameter was passed
         call_kwargs = mock_instance.chat.call_args.kwargs
-        assert call_kwargs["format"] == self.TestFormat.model_json_schema()
+        assert call_kwargs["format"] == self.ValidationFormat.model_json_schema()
         # Content should be JSON string
         assert content == '{"result": "test", "count": 42}'

@@ -5,7 +5,8 @@ Fixtures for provider tests.
 import pytest
 from unittest.mock import MagicMock, patch
 from linden.provider import OpenAiClient, GroqClient, Ollama
-from linden.core.ai_client import AiClient
+from linden.provider.anthropic import AnthropicClient
+from linden.provider.ai_client import AiClient
 from linden.core.model import ToolCall, Function
 from linden.memory.agent_memory import AgentMemory
 
@@ -15,7 +16,8 @@ def mock_config_manager():
     """Mock for the ConfigManager."""
     with patch('linden.provider.openai.ConfigManager') as mock_openai_cm, \
          patch('linden.provider.groq.ConfigManager') as mock_groq_cm, \
-         patch('linden.provider.ollama.ConfigManager') as mock_ollama_cm:
+         patch('linden.provider.ollama.ConfigManager') as mock_ollama_cm, \
+         patch('linden.provider.anthropic.ConfigManager') as mock_anthropic_cm:
         
         # Mock for OpenAI config
         mock_openai_config = MagicMock()
@@ -35,10 +37,18 @@ def mock_config_manager():
         mock_ollama_config.timeout = 30
         mock_ollama_cm.get.return_value.ollama = mock_ollama_config
         
+        # Mock for Anthropic config
+        mock_anthropic_config = MagicMock()
+        mock_anthropic_config.timeout = 30
+        mock_anthropic_config.api_key = "test-api-key"
+        mock_anthropic_config.max_tokens = 4096
+        mock_anthropic_cm.get.return_value.anthropic = mock_anthropic_config
+        
         yield {
             "openai": mock_openai_cm,
             "groq": mock_groq_cm,
-            "ollama": mock_ollama_cm
+            "ollama": mock_ollama_cm,
+            "anthropic": mock_anthropic_cm
         }
 
 
@@ -72,6 +82,17 @@ def mock_ollama_client(mock_config_manager):
         # Create a mock for chat
         mock_instance.chat = MagicMock()
         client = Ollama(model="llama3", temperature=0.7)
+        yield client, mock_instance
+
+
+@pytest.fixture
+def mock_anthropic_client(mock_config_manager):
+    """Mock for the Anthropic client."""
+    with patch('linden.provider.anthropic.Anthropic') as mock_anthropic:
+        mock_instance = mock_anthropic.return_value
+        # Create a mock for messages
+        mock_instance.messages.create = MagicMock()
+        client = AnthropicClient(model="claude-3-sonnet-20240229", temperature=0.7)
         yield client, mock_instance
 
 
@@ -119,6 +140,30 @@ def mock_ollama_response():
     mock_resp.message = MagicMock()
     mock_resp.message.content = "Test response"
     mock_resp.message.tool_calls = None
+    return mock_resp
+
+
+@pytest.fixture
+def mock_anthropic_response():
+    """Mock for Anthropic response."""
+    mock_resp = MagicMock()
+    mock_content = MagicMock()
+    mock_content.type = "text"
+    mock_content.text = "Test response"
+    mock_resp.content = [mock_content]
+    return mock_resp
+
+
+@pytest.fixture
+def mock_anthropic_tool_response():
+    """Mock for Anthropic response with tool call."""
+    mock_resp = MagicMock()
+    mock_tool_content = MagicMock()
+    mock_tool_content.type = "tool_use"
+    mock_tool_content.id = "call_123"
+    mock_tool_content.name = "test_function"
+    mock_tool_content.input = {"param1": "value1"}
+    mock_resp.content = [mock_tool_content]
     return mock_resp
 
 
