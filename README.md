@@ -15,6 +15,7 @@
 - [Installation](#installation)
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
+  - [Agent Configuration](#agent-configuration)
   - [Basic Agent Setup](#basic-agent-setup)
   - [Agent with Function Calling](#agent-with-function-calling)
   - [Streaming Responses](#streaming-responses)
