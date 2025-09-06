@@ -51,8 +51,9 @@ Linden is a comprehensive AI agent framework that provides a unified interface f
 - **Streaming Support**: Real-time response streaming for interactive applications
 - **Thread-Safe Memory**: Concurrent agent support with isolated memory per agent
 - **Configuration Management**: Flexible TOML-based configuration with environment variable support
-- **Type Safety**: Full Pydantic model support for structured outputs
+- **Type Safety**: Full Pydantic model support for structured outputs and agent configuration
 - **Error Handling**: Comprehensive error handling with retry mechanisms
+- **Validated Configuration**: Strict parameter validation with Pydantic's AgentConfiguration model
 
 ## Installation
 
@@ -72,15 +73,45 @@ pip install linden
   - `mem0` - Memory management
   - `docstring_parser` - Function documentation parsing
 
+## Agent Configuration
+
+Linden uses a Pydantic model called `AgentConfiguration` to define and validate all agent parameters. This provides:
+
+- Strong typing and validation for all agent parameters
+- Rejection of invalid or unsupported parameters
+- Default values for optional parameters
+- Clear documentation of configuration options
+
+Example of using `AgentConfiguration`:
+
+```python
+from linden.core import AgentConfiguration, Provider
+
+config = AgentConfiguration(
+    user_id="user123",
+    name="assistant",
+    model="gpt-4",
+    temperature=0.7,
+    system_prompt="You are a helpful AI assistant.",
+    tools=[get_weather],  # Optional list of callable functions
+    output_type=PersonInfo,  # Optional Pydantic model for structured output
+    client=Provider.OPENAI,  # AI provider enum
+    retries=3  # Retry attempts for failed requests
+)
+
+# Create agent with configuration
+agent = AgentRunner(config=config)
+```
+
 ## Quick Start
 
 ### Basic Agent Setup
 
 ```python
-from linden.core import AgentRunner, Provider
+from linden.core import AgentRunner, AgentConfiguration, Provider
 
-# Create a simple agent
-agent = AgentRunner(
+# Create an agent configuration
+config = AgentConfiguration(
     user_id="user123",
     name="assistant",
     model="gpt-4",
@@ -88,6 +119,9 @@ agent = AgentRunner(
     system_prompt="You are a helpful AI assistant.",
     client=Provider.OPENAI
 )
+
+# Initialize the agent with configuration
+agent = AgentRunner(config=config)
 
 # Ask a question
 response = agent.run("What is the capital of France?")
@@ -109,8 +143,8 @@ def get_weather(location: str, units: str = "celsius") -> str:
     """
     return f"The weather in {location} is 22°{units[0].upper()}"
 
-# Create agent with tools
-agent = AgentRunner(
+# Create agent configuration with tools
+config = AgentConfiguration(
     user_id="user123",
     name="weather_bot",
     model="gpt-4",
@@ -119,6 +153,9 @@ agent = AgentRunner(
     tools=[get_weather],
     client=Provider.OPENAI
 )
+
+# Initialize the agent
+agent = AgentRunner(config=config)
 
 response = agent.run("What's the weather in Paris?")
 print(response)
@@ -136,13 +173,15 @@ for chunk in agent.run("Tell me a story", stream=True):
 
 ```python
 from pydantic import BaseModel
+from linden.core import AgentRunner, AgentConfiguration, Provider
 
 class PersonInfo(BaseModel):
     name: str
     age: int
     occupation: str
 
-agent = AgentRunner(
+# Create agent configuration with output_type for structured outputs
+config = AgentConfiguration(
     user_id="user123",
     name="extractor",
     model="gpt-4",
@@ -151,6 +190,9 @@ agent = AgentRunner(
     output_type=PersonInfo,
     client=Provider.OPENAI
 )
+
+# Initialize the agent
+agent = AgentRunner(config=config)
 
 result = agent.run("John Smith is a 30-year-old software engineer.")
 print(f"Name: {result.name}, Age: {result.age}")
@@ -272,7 +314,17 @@ def search_database(query: str, limit: int = 10, filters: dict = None) -> list:
 ### Multi-Turn Conversations
 
 ```python
-agent = AgentRunner(user_id="user123", name="chat_bot", model="gpt-4", temperature=0.7)
+from linden.core import AgentRunner, AgentConfiguration
+
+# Create agent configuration
+config = AgentConfiguration(
+    user_id="user123", 
+    name="chat_bot", 
+    model="gpt-4", 
+    temperature=0.7,
+    system_prompt="You are a helpful assistant."
+)
+agent = AgentRunner(config=config)
 
 # Conversation maintains context automatically
 agent.run("My name is Alice")
@@ -283,13 +335,19 @@ agent.run("Tell me about my previous question")  # Has full context
 ### Error Handling and Retries
 
 ```python
-agent = AgentRunner(
+from linden.core import AgentRunner, AgentConfiguration
+from linden.core.model import ToolError, ToolNotFound
+
+# Configure agent with retries
+config = AgentConfiguration(
     user_id="user123",
     name="robust_agent",
     model="gpt-4", 
     temperature=0.7,
+    system_prompt="You are a helpful assistant.",
     retries=3  # Retry failed calls up to 3 times
 )
+agent = AgentRunner(config=config)
 
 try:
     response = agent.run("Complex query that might fail")
@@ -315,45 +373,66 @@ history = agent.memory.get_conversation("Current query")
 ### Provider-Specific Features
 
 ```python
+from linden.core import AgentRunner, AgentConfiguration, Provider
+
 # Use Anthropic Claude models
-claude_agent = AgentRunner(
+claude_config = AgentConfiguration(
     user_id="user123",
     name="claude_agent",
     model="claude-3-opus-20240229",
+    system_prompt="You are a helpful assistant.",
+    temperature=0.7,
     client=Provider.ANTHROPIC
 )
+claude_agent = AgentRunner(config=claude_config)
 
 # Use local Ollama models
-local_agent = AgentRunner(
+ollama_config = AgentConfiguration(
     user_id="user123",
     name="local_agent",
     model="llama2",
+    system_prompt="You are a helpful assistant.",
+    temperature=0.7,
     client=Provider.OLLAMA
 )
+local_agent = AgentRunner(config=ollama_config)
 
 # Use Groq for fast inference
-fast_agent = AgentRunner(
+groq_config = AgentConfiguration(
     user_id="user123",
     name="fast_agent", 
     model="mixtral-8x7b-32768",
+    system_prompt="You are a helpful assistant.",
+    temperature=0.7,
     client=Provider.GROQ
 )
+fast_agent = AgentRunner(config=groq_config)
 ```
 
 ## API Reference
 
+### AgentConfiguration
+
+#### Parameters
+- `user_id` (str): Unique identifier for the user
+- `name` (str): Unique agent identifier (defaults to UUID4)
+- `model` (str): LLM model name
+- `temperature` (float): Response randomness (0-1)
+- `system_prompt` (str): System instruction
+- `tools` (list[Callable], optional): Available functions (defaults to empty list)
+- `output_type` (BaseModel, optional): Structured output schema (defaults to None)
+- `client` (Provider): LLM provider selection (defaults to Provider.OLLAMA)
+- `retries` (int): Maximum retry attempts (defaults to 3)
+
+#### Features
+- Type validation for all parameters
+- Strict parameter validation (rejects unknown parameters)
+- Default values for optional parameters
+
 ### AgentRunner
 
 #### Constructor Parameters
-- `user_id` (str): Unique identifier for the user
-- `name` (str): Unique agent identifier
-- `model` (str): LLM model name
-- `temperature` (int): Response randomness (0-1)
-- `system_prompt` (str, optional): System instruction
-- `tools` (list[Callable], optional): Available functions
-- `output_type` (BaseModel, optional): Structured output schema
-- `client` (Provider): LLM provider selection
-- `retries` (int): Maximum retry attempts
+- `config` (AgentConfiguration): Configuration object for the agent with all the necessary settings
 
 #### Methods
 - `run(user_question: str, stream: bool = False)`: Execute agent query
