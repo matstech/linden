@@ -5,7 +5,7 @@ Fixtures for core tests.
 import pytest
 from unittest.mock import MagicMock, patch
 from pydantic import BaseModel
-from linden.core.agent_runner import AgentRunner
+from linden.core import AgentRunner, AgentConfiguration
 from linden.provider.ai_client import AiClient, Provider
 from linden.core.model import ToolCall, Function, ToolError, ToolNotFound
 from linden.memory.agent_memory import AgentMemory
@@ -99,15 +99,15 @@ def mock_agent_runner(mock_ai_client):
     with patch('linden.core.agent_runner.AgentMemory', return_value=mock_memory), \
          patch('linden.core.agent_runner.Ollama', return_value=mock_ai_client):
         
-        # Create the agent runner
-        runner = AgentRunner(
+        # Create the agent runner with configuration
+        config = AgentConfiguration(
             user_id="test_user",
             name="test_agent",
             model="test-model",
             temperature=0.7,
-            system_prompt="You are a test assistant.",
-            tools=[]
+            system_prompt="You are a test assistant."
         )
+        runner = AgentRunner(config=config)
         
         yield runner
 

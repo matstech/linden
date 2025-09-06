@@ -4,7 +4,7 @@
 # pylint: disable=C0303
 from unittest.mock import MagicMock
 
-from linden.core.agent_runner import AgentRunner
+from linden.core import AgentRunner, AgentConfiguration
 from linden.core.model import ToolCall, Function
 from linden.memory.agent_memory import AgentMemory
 from linden.provider.ai_client import Provider
@@ -44,8 +44,8 @@ def test_full_conversation_flow():
         ("The result is 35", None)
     ])
     
-    # Create an agent runner with tools
-    agent = AgentRunner(
+    # Create an agent runner with tools using AgentConfiguration
+    config = AgentConfiguration(
         user_id="test_user",
         name="test_agent",
         model="llama3",  # Use a model that works with Ollama for testing
@@ -54,6 +54,7 @@ def test_full_conversation_flow():
         tools=[weather_tool, calculator],
         client=Provider.OLLAMA
     )
+    agent = AgentRunner(config=config)
     
     # Replace the agent's client with our mock
     agent.client = mock_client
@@ -86,7 +87,7 @@ def test_integration_with_error_recovery():
     mock_client.tools = None
     mock_client.query_llm = MagicMock(return_value=("Tool executed successfully", None))
     
-    # Create an agent runner with both tools
+    # Create an agent runner with both tools (legacy style)
     agent = AgentRunner(
         user_id="test_user",
         name="error_recovery_agent",
@@ -111,8 +112,8 @@ def test_provider_integration():
     """Test integration with different providers."""
     # We'll test that the agent can be created with Ollama provider (least dependencies)
     
-    # Create an agent with Ollama provider
-    ollama_agent = AgentRunner(
+    # Create an agent with Ollama provider using AgentConfiguration
+    config = AgentConfiguration(
         user_id="test_user",
         name="ollama_agent",
         model="llama3",
@@ -121,6 +122,9 @@ def test_provider_integration():
         tools=[],
         client=Provider.OLLAMA
     )
+    
+    # Create the agent
+    ollama_agent = AgentRunner(config=config)
     
     # Test that the client is properly set
     assert ollama_agent is not None
@@ -143,16 +147,16 @@ def test_memory_persistence_with_agent():
     mock_client.tools = None
     mock_client.query_llm = MagicMock(return_value=("I remember our previous conversation!", None))
     
-    # Create agent with the existing memory
-    agent = AgentRunner(
+    # Create agent with the existing memory using AgentConfiguration
+    config = AgentConfiguration(
         user_id="test_user",
         name="test_agent_memory",
         model="llama3",
         temperature=0.7,
         system_prompt="You are a helpful assistant.",
-        tools=[],
         client=Provider.OLLAMA
     )
+    agent = AgentRunner(config=config)
     
     # Replace agent memory and client with our mocks
     agent.memory = memory
