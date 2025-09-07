@@ -5,10 +5,10 @@
 from unittest.mock import patch, MagicMock
 import pytest
 
-from linden.core.agent_runner import AgentRunner
+from linden.core.agent_runner import AgentRunner, AgentConfiguration
 from linden.core.model import ToolCall, Function, ToolError, ToolNotFound
 from linden.memory.agent_memory import AgentMemory
-
+from pydantic import BaseModel
 
 class MockToolFunction:
     """Class for testing tool functions."""
@@ -51,8 +51,8 @@ async def test_agent_runner_initialization(mock_ai_client):
         """
         return f"Result: {arg1}, {arg2}"
     
-    # Create an agent runner
-    agent = AgentRunner(
+    # Create configuration and agent runner
+    config = AgentConfiguration(
         user_id="test_user",
         name="test_agent",
         model="gpt-4",
@@ -60,6 +60,7 @@ async def test_agent_runner_initialization(mock_ai_client):
         system_prompt="You are a test assistant.",
         tools=[sample_tool]
     )
+    agent = AgentRunner(config=config)
     
     # Verify initialization
     assert agent.name == "test_agent"
@@ -72,7 +73,7 @@ async def test_agent_runner_initialization(mock_ai_client):
 @pytest.mark.asyncio
 async def test_agent_runner_with_memory(mock_ai_client, mock_agent_memory):
     """Test AgentRunner with pre-initialized memory."""
-    # Create an agent runner with default memory
+    # Testing legacy style initialization for comparison
     agent = AgentRunner(
         user_id="test_user",
         name="test_agent",
@@ -124,8 +125,8 @@ async def test_agent_runner_tool_call_sync():
         """
         return f"Result: {param1}, {param2}"
     
-    # Create an agent runner with the tool
-    agent = AgentRunner(
+    # Create an agent runner with the tool using config
+    config = AgentConfiguration(
         user_id="test_user",
         name="test_agent",
         model="gpt-4",
@@ -133,6 +134,7 @@ async def test_agent_runner_tool_call_sync():
         system_prompt="You are a test assistant.",
         tools=[test_tool]
     )
+    agent = AgentRunner(config=config)
     
     # Create tool calls list
     function = Function(name="test_tool", arguments={"param1": "value1", "param2": 42})
@@ -162,7 +164,7 @@ async def test_agent_runner_tool_call_async():
         """
         return f"Async Result: {param1}, {param2}"
     
-    # Create an agent runner with the async tool
+    # Create an agent runner with the async tool (using legacy style)
     agent = AgentRunner(
         user_id="test_user",
         name="test_agent",
@@ -187,15 +189,16 @@ async def test_agent_runner_tool_call_async():
 @pytest.mark.asyncio
 async def test_agent_runner_tool_call_not_found():
     """Test tool_call method with non-existent tool."""
-    # Create an agent runner with no tools
-    agent = AgentRunner(
+    # Create an agent runner with no tools using configuration
+    config = AgentConfiguration(
         user_id="test_user",
         name="test_agent",
         model="gpt-4",
         temperature=0.7,
         system_prompt="You are a test assistant.",
-        tools=[]
+        tools=[]  # empty tools list
     )
+    agent = AgentRunner(config=config)
     
     # Create a tool call for a non-existent tool
     function = Function(name="non_existent_tool", arguments={"param": "value"})
@@ -225,7 +228,7 @@ async def test_agent_runner_tool_call_error():
         """
         raise ValueError("Tool execution error")
     
-    # Create an agent runner with the error tool
+    # Create an agent runner with the error tool (legacy style)
     agent = AgentRunner(
         user_id="test_user",
         name="test_agent",
@@ -281,15 +284,16 @@ async def test_agent_runner_run():
     
     # Patch the client creation
     with patch('linden.core.agent_runner.Ollama', return_value=mock_client):
-        # Create agent
-        agent = AgentRunner(
-        user_id="test_user",
-        name="test_agent",
+        # Create agent using configuration
+        config = AgentConfiguration(
+            user_id="test_user",
+            name="test_agent",
             model="gpt-4",
             temperature=0.7,
             system_prompt="You are a test assistant.",
             tools=[test_tool]
         )
+        agent = AgentRunner(config=config)
         
         # Run the agent
         response = agent.run(user_question="Run the test tool")
@@ -310,15 +314,16 @@ async def test_agent_runner_run_no_tools_used():
     
     # Patch the client creation
     with patch('linden.core.agent_runner.Ollama', return_value=mock_client):
-        # Create agent
-        agent = AgentRunner(
-        user_id="test_user",
-        name="test_agent",
+        # Create agent using configuration
+        config = AgentConfiguration(
+            user_id="test_user",
+            name="test_agent",
             model="gpt-4",
             temperature=0.7,
-            system_prompt="You are a test assistant.",
-            tools=[]
+            system_prompt="You are a test assistant."
+            # tools defaults to empty list
         )
+        agent = AgentRunner(config=config)
         
         # Run the agent
         response = agent.run(user_question="Just respond without tools")
@@ -329,7 +334,7 @@ async def test_agent_runner_run_no_tools_used():
 
 def test_agent_runner_with_system_prompt():
     """Test AgentRunner with custom system prompt."""
-    # Create an agent with a custom system prompt
+    # Create an agent with a custom system prompt (legacy style)
     agent = AgentRunner(
         user_id="test_user",
         name="test_agent",
@@ -372,8 +377,8 @@ async def test_agent_runner_multiple_tool_calls():
         """
         return f"Tool 2 result: {param}"
     
-    # Create an agent with both tools
-    agent = AgentRunner(
+    # Create an agent with both tools using AgentConfiguration
+    config = AgentConfiguration(
         user_id="test_user",
         name="test_agent",
         model="gpt-4",
@@ -381,6 +386,7 @@ async def test_agent_runner_multiple_tool_calls():
         system_prompt="You are a test assistant.",
         tools=[tool1, tool2]
     )
+    agent = AgentRunner(config=config)
     
     # Create tool calls
     function1 = Function(name="tool1", arguments={"param": "value1"})
@@ -456,15 +462,15 @@ def test_agent_runner_reset():
     with patch('linden.core.agent_runner.AgentMemory', return_value=mock_memory), \
          patch('linden.core.agent_runner.Ollama', return_value=mock_client):
         
-        # Create agent
-        agent = AgentRunner(
-        user_id="test_user",
-        name="test_agent",
+        # Create agent using configuration
+        config = AgentConfiguration(
+            user_id="test_user",
+            name="test_agent",
             model="gpt-4",
             temperature=0.7,
-            system_prompt="You are a test assistant.",
-            tools=[]
+            system_prompt="You are a test assistant."
         )
+        agent = AgentRunner(config=config)
         
         # Call reset
         agent.reset()
@@ -477,7 +483,7 @@ def test_agent_runner_reset():
 
 def test_agent_runner_with_output_type():
     """Test AgentRunner with output_type parameter."""
-    from pydantic import BaseModel
+    
     
     # Define a custom output model
     class TestOutputModel(BaseModel):

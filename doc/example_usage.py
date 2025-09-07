@@ -5,13 +5,14 @@ This example shows how to use the library with the new import structure.
 """
 
 # Import the main components from linden
-from linden.core import AgentRunner, Provider
+from linden.core import AgentRunner, AgentConfiguration
+from linden.provider.ai_client import Provider
 
 def main():
     """Example of how to use Linden with the new import structure."""
     
-    # Create an agent
-    agent = AgentRunner(
+    # Create agent configuration
+    config = AgentConfiguration(
         user_id="user123",  # User identifier for memory isolation
         name="example_agent",
         model="gpt-3.5-turbo",
@@ -19,6 +20,9 @@ def main():
         system_prompt="You are a helpful assistant.",
         client=Provider.OPENAI
     )
+    
+    # Create an agent
+    agent = AgentRunner(config=config)
     
     # Use the agent
     response = agent.ask_to_llm("Hello, how are you?")

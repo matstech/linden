@@ -41,6 +41,7 @@ def test_core_init_has_all():
     import linden.core
     assert hasattr(linden.core, "__all__")
     assert set(linden.core.__all__) == {
+        "AgentConfiguration",
         "AgentRunner", 
         "ToolCall",
         "ToolError",

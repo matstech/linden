@@ -2,8 +2,9 @@
 """ Module wrap an agent """
 import logging
 import json
-from typing import Callable, Generator
-from pydantic import BaseModel, ValidationError
+from typing import Callable, Generator, Any
+import uuid
+from pydantic import BaseModel, Field, ValidationError
 from requests import RequestException
 
 from linden.provider.anthropic import AnthropicClient
@@ -17,50 +18,82 @@ from ..provider.openai import OpenAiClient
 
 logger = logging.getLogger(__name__)
 
+class AgentConfiguration(BaseModel):
+    """
+    Configuration class for an AI agent.
+    This class defines the configuration parameters for an AI agent including
+    the language model to use, prompt settings, tools, and other operational
+    parameters.
+    Attributes:
+        user_id (str): Unique identifier for the user
+        name (str): Name of the agent, defaults to a random UUID4 string
+        model (str): LLM to use to run the agent
+        temperature (float): Temperature for the LLM, between 0 and 1
+        system_prompt (str): System prompt for the agent as a simple text
+        tools (list[Callable[..., any]]): List of callable tools available to the agent, defaults to empty list
+        output_type (BaseModel | None): Optional Pydantic model for the output format of the agent
+        client (Provider): AI provider to use for this agent, defaults to Provider.OLLAMA
+        retries (int): Number of retry attempts for failed requests, defaults to 3
+    """
+    
+    user_id: str = Field(..., description="Unique identifier for the user")
+    name: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Name of the agent")
+    model: str = Field(..., description="LLM to use to run the agent")
+    temperature: float = Field(ge=0, le=1, description="Temperature for the LLM, between 0 and 1")
+    system_prompt: str = Field(..., description="System prompt for the agent as a simple text")
+    tools: list[Callable[..., any]] = Field(default_factory=list, description="List of callable tools available to the agent")
+    output_type: Any = Field(default=None, description="Pydantic model for the output format of the agent")
+    client: Provider = Field(default=Provider.OLLAMA, description="AI provider to use for this agent", enum=Provider)
+    retries: int = Field(default=3, description="Number of retry attempts for failed requests")
+    
+    model_config = {
+        "extra": "forbid"  # Reject any parameters not defined in the model
+    }
+
 
 class AgentRunner:
     """ Define Agent features """
-    def __init__(self,
-                 user_id: str,
-                 name: str,
-                 model: str,
-                 temperature: int,
-                 system_prompt: str = None,
-                 tools: list[Callable[[], None]] = None,
-                 output_type:BaseModel = None,
-                 client: Provider = Provider.OLLAMA,
-                 retries=3):
+    def __init__(self, config: AgentConfiguration | None = None, **kwargs):
         """
-        Initialize an AgentRunner with specified configuration.
-        
-        Args:
-            user_id: Unique identifier for the user
-            name: Name of the agent
-            model: LLM model to use
-            temperature: Sampling temperature for the model
-            system_prompt: Initial instructions for the agent
-            tools: List of callable tools available to the agent
-            output_type: Pydantic model for response validation
-            client: The AI provider to use
-            retries: Number of retry attempts for failed requests
-        """
-        self.user_id = user_id
-        self.name = name
-        self.model = model
-        self.temperature = temperature
-        self.tools = tools if tools is not None else []
-        self.retries = retries
-        self.output_type = output_type
-        self.history = []
-        self.tool_desc = self._parse_tools(provider=client)
-        self._set_system_prompt(system_prompt)
-        self._set_client(client=client)
-        self.memory = AgentMemory(agent_id=self.name,
-                                  user_id=self.user_id,
-                                  system_prompt=self.system_prompt,
-                                  history=self.history)
+        Initialize an AgentRunner either from an AgentConfiguration instance
+        or from keyword arguments.
 
-        logger.info("Init agent %s", name)
+        Args:
+            config: Optional AgentConfiguration instance. If provided, kwargs are ignored.
+            **kwargs: Configuration parameters that will be used to create
+                    an AgentConfiguration instance.
+        
+        Raises:
+            ValidationError: If any parameter is invalid or not recognized
+                            by the AgentConfiguration model.
+        """
+        # If config is provided, use it; otherwise create from kwargs
+        if config is None:
+            config = AgentConfiguration(**kwargs)  # ValidationError for invalid params
+        elif kwargs:
+            logger.warning("Both config and kwargs provided - kwargs will be ignored")
+        
+        # initialize fields from configuration
+        self.user_id = config.user_id
+        self.name = config.name
+        self.model = config.model
+        self.temperature = config.temperature
+        self.tools = config.tools  # already defaulted to [] in AgentConfiguration
+        self.retries = config.retries
+        self.output_type = config.output_type
+
+        # conversation history and tool descriptions
+        self.history = []
+        self.tool_desc = self._parse_tools(provider=config.client)
+
+        # system prompt and client initialization
+        self._set_system_prompt(config.system_prompt)
+        self._set_client(client=config.client)
+
+        # memory manager
+        self.memory = AgentMemory(agent_id=self.name, user_id=self.user_id, system_prompt=self.system_prompt, history=self.history)
+
+        logger.info("Init agent %s", self.name)
 
     def ask_to_llm(self, prompt: str, stream: bool = False, output_format: BaseModel = None) -> Generator[str, None, None] | tuple[str, list]:
         """Query the LLM client with the given input
@@ -234,8 +267,8 @@ class AgentRunner:
             tool_desc = []
             for tool in self.tools:
                 doc_string = parse_google_docstring(
-                    docstring=tool.__doc__, 
-                    func_name=tool.__name__, 
+                    docstring=tool.__doc__,
+                    func_name=tool.__name__,
                     include_returns= False if provider == Provider.ANTHROPIC else True,
                     provider=provider)
                 if provider == Provider.ANTHROPIC:

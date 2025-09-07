@@ -7,7 +7,7 @@ import json
 import asyncio
 import pytest
 
-from linden.core.agent_runner import AgentRunner
+from linden.core import AgentRunner, AgentConfiguration
 from linden.provider.ai_client import AiClient, Provider
 from linden.core.model import ToolCall, Function, ToolError, ToolNotFound
 from linden.memory.agent_memory import AgentMemory
@@ -33,15 +33,15 @@ def test_agent_runner_empty_tools():
         mock_openai.query_llm = MagicMock(return_value=("No tools available", None))
         mock_openai_class.return_value = mock_openai
         
-        agent = AgentRunner(
-        user_id="test_user",
-        name="test_agent",
+        config = AgentConfiguration(
+            user_id="test_user",
+            name="test_agent",
             model="gpt-4",  # Use a known model name
             temperature=0.7,
             system_prompt="You are a test assistant.",
-            tools=[],
             client=Provider.OPENAI  # Use OpenAI provider to avoid Ollama errors
         )
+        agent = AgentRunner(config=config)
         
         # Set our mock as the client
         agent.client = mock_openai
