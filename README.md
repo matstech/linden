@@ -8,6 +8,17 @@
   <p><em>A Python framework for building AI agents with multi-provider LLM support, persistent memory, and function calling capabilities.</em></p>
 </div>
 
+<div align="center">
+  
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
+![License](https://img.shields.io/github/license/matstech/linden)
+![Version](https://img.shields.io/github/v/release/matstech/linden)
+![CI](https://github.com/matstech/linden/actions/workflows/python-publish.yml/badge.svg)
+![Coverage](https://codecov.io/gh/matstech/linden/branch/main/graph/badge.svg)
+<!--![Contributors](https://img.shields.io/github/contributors/matstech/linden)-->
+
+</div>
+  
 ## Table of Contents
 
 - [Overview](#overview)

@@ -45,7 +45,17 @@ jobs:
       - name: Test with pytest
         if: ${{ github.event.inputs.skip_tests != 'true' }}
         run: |
-          pytest test/ --cov=src/linden
+          pytest test/ --cov=src/linden --cov-report=xml
+
+      - name: Debug - List files
+        run: |
+          ls -la
+          find . -name "coverage.xml" -o -name "*.xml"
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           
       - name: Build release distributions
         run: |
