@@ -14,7 +14,7 @@
 ![License](https://img.shields.io/github/license/matstech/linden)
 ![Version](https://img.shields.io/github/v/release/matstech/linden)
 ![CI](https://github.com/matstech/linden/actions/workflows/python-publish.yml/badge.svg)
-<!--![Coverage](https://codecov.io/gh/matstech/linden/badge.svg)-->
+![Coverage](https://codecov.io/gh/matstech/linden/badge.svg)
 <!--![Contributors](https://img.shields.io/github/contributors/matstech/linden)-->
 
 </div>
