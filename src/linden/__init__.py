@@ -8,7 +8,7 @@ This package provides tools for creating AI agents with:
 - Configurable agent behaviors
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "matstech"
 __email__ = "matteo.stabile2@gmail.com"
 
