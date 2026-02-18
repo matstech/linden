@@ -86,6 +86,17 @@ def parse_google_docstring(docstring: str, func_name: str = "function_name", inc
         if "list" in return_type.lower():
             result["returns"]["items"] = {"type": "string"}
 
+    if provider == Provider.GOOGLE:
+        return {
+            "functionDeclarations": [
+                {
+                    "name": result["name"],
+                    "description": result["description"],
+                    "parametersJsonSchema": result["parameters_json_schema"],
+                }
+            ]
+        }
+
     return result
 
 def _build_description(parsed) -> str:
