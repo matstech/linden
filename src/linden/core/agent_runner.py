@@ -139,16 +139,21 @@ class AgentRunner:
                     # return the stream generator
                     return data
                 logger.debug("Agent %s response: %s", self.name, data)
-                if data[0] is not None and (data[1] is None or len(data[1]) == 0):
+
+                content, tool_calls = data
+
+                if tool_calls:
+                    return self.tool_call(tool_actions=tool_calls)
+
+                if content is not None:
                     if self.output_type is not None:
                         # return output_type obj or raise ValidationError exception
-                        return self.output_type.model_validate_json(data[0])
+                        return self.output_type.model_validate_json(content)
                     else:
                         # return raw output
-                        return data[0]
-                else:
-                    # return tool output directly
-                    return self.tool_call(tool_actions=data[1])
+                        return content
+
+                raise ValueError("invalid response from model: no content and no tool calls")
             except (ValueError, json.JSONDecodeError, RequestException, ToolError, ToolNotFound) as exc:
                 if isinstance(exc, RequestException):
                     err = f"error in calling model: {exc.args}"
@@ -159,9 +164,16 @@ class AgentRunner:
                     # excluding error tool from the list of available tool
                     temp_tools = []
                     for tool in self.tool_desc:
-                        if tool['function']['name'] != exc.tool_name:
+                        tool_name = None
+                        if isinstance(tool, dict):
+                            if "function" in tool:
+                                tool_name = tool["function"].get("name")
+                            elif "functionDeclarations" in tool and tool["functionDeclarations"]:
+                                tool_name = tool["functionDeclarations"][0].get("name")
+                        if tool_name is None or tool_name != exc.tool_name:
                             temp_tools.append(tool)
-                    self.client.tools = temp_tools
+                    if temp_tools:
+                        self.client.tools = temp_tools
                 else:
                     err = exc.message
                 logger.warning("Error during agent execution: %s", err)
@@ -194,12 +206,19 @@ class AgentRunner:
             ToolNotFound: If no matching tool is found for an action
             ToolError: If there's an error executing the tool
         """
+        if not tool_actions:
+            raise ToolNotFound("no tool found to execute specified actions")
         if len(self.tools) == 0:
             raise ToolNotFound("no tool found for the agent")
+        last_action = None
         try:
             for action in tool_actions:
+                last_action = action
+                action_name = action.function.name or ""
+                normalized_action_name = action_name.replace("-", "_")
                 for tool in self.tools:
-                    if getattr(tool, '__name__', 'Unknown') == action.function.name:
+                    tool_name = getattr(tool, '__name__', 'Unknown')
+                    if tool_name == action_name or tool_name == normalized_action_name:
                         args = action.function.arguments
                         if isinstance(args, str):
                             args = json.loads(args)
@@ -208,11 +227,20 @@ class AgentRunner:
                             merged_args.update(args["params"])
                             return tool(merged_args)
                         return tool(**args)
+            if len(self.tools) == 1 and last_action and not last_action.function.name:
+                args = last_action.function.arguments
+                if isinstance(args, str):
+                    args = json.loads(args)
+                elif isinstance(args, dict) and "params" in args and isinstance(args["params"], dict):
+                    merged_args = {k: v for k, v in args.items() if k != "params"}
+                    merged_args.update(args["params"])
+                    return self.tools[0](merged_args)
+                return self.tools[0](**args)
             raise ToolNotFound("no tool found to execute specified actions")
         except Exception as exc:
             raise ToolError(message="invalid tool call",
-                            tool_name=action.function.name,
-                            tool_input=action.function.arguments) from exc
+                            tool_name=getattr(last_action.function, 'name', None) if last_action else None,
+                            tool_input=getattr(last_action.function, 'arguments', None) if last_action else None) from exc
 
     def add_to_context(self, content: str, persist: bool = False):
         """
@@ -266,10 +294,11 @@ class AgentRunner:
         if self.tools and len(self.tools) > 0:
             tool_desc = []
             for tool in self.tools:
+                include_returns = False if provider in {Provider.ANTHROPIC, Provider.GOOGLE} else True
                 doc_string = parse_google_docstring(
                     docstring=tool.__doc__,
                     func_name=tool.__name__,
-                    include_returns= False if provider == Provider.ANTHROPIC else True,
+                    include_returns=include_returns,
                     provider=provider)
                 if provider == Provider.ANTHROPIC:
                     tool_desc.append(doc_string)
