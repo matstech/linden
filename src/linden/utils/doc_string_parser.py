@@ -26,8 +26,6 @@ def parse_google_docstring(docstring: str, func_name: str = "function_name", inc
 
     if provider == Provider.ANTHROPIC:
         param_name = "input_schema"
-    elif provider == Provider.GOOGLE:
-        param_name = "parameters_json_schema"
 
     result = {
         "name": func_name,
@@ -38,9 +36,6 @@ def parse_google_docstring(docstring: str, func_name: str = "function_name", inc
             "required": []
         }
     }
-
-    if provider == Provider.GOOGLE:
-        result["parameters_json_schema"]["additionalProperties"] = False
 
     # Add parameters
     for param in parsed.params:

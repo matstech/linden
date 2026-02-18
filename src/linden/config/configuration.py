@@ -74,18 +74,6 @@ class AnthropicConfig:
     timeout: int
 
 @dataclass
-class GoogleGenAiConfig:
-    """
-    Configuration for Google API client.
-    
-    Attributes:
-        api_key: Authentication key for Google API
-        timeout: Request timeout in seconds
-    """
-    api_key: str
-    timeout: int
-
-@dataclass
 class MemoryConfig:
     """
     Configuration for agent memory storage.
@@ -118,7 +106,6 @@ class Configuration:
     ollama: OllamaConfig
     openai: OpenAIConfig
     anthropic: AnthropicConfig
-    google: GoogleGenAiConfig
     memory: MemoryConfig
 
     @classmethod
@@ -146,7 +133,6 @@ class Configuration:
             ollama=OllamaConfig(**data['ollama']),
             openai=openai_config,
             anthropic=AnthropicConfig(**data['anthropic']),
-            google=GoogleGenAiConfig(**data['google']),
             memory=MemoryConfig(**data['memory'])
         )
 

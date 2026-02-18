@@ -17,7 +17,6 @@ class Provider(Enum):
     GROQ = 2
     OPENAI = 3
     ANTHROPIC = 4
-    GOOGLE = 5
 
 class AiClient(ABC):
     """Interface for AI client"""
