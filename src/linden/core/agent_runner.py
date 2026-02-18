@@ -36,6 +36,10 @@ class AgentConfiguration(BaseModel):
         retries (int): Number of retry attempts for failed requests, defaults to 3
     """
     
+    model_config = {
+        "extra": "forbid"  # Reject any parameters not defined in the model
+    }
+
     user_id: str = Field(..., description="Unique identifier for the user")
     name: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Name of the agent")
     model: str = Field(..., description="LLM to use to run the agent")
@@ -43,12 +47,8 @@ class AgentConfiguration(BaseModel):
     system_prompt: str = Field(..., description="System prompt for the agent as a simple text")
     tools: list[Callable[..., any]] = Field(default_factory=list, description="List of callable tools available to the agent")
     output_type: Any = Field(default=None, description="Pydantic model for the output format of the agent")
-    client: Provider = Field(default=Provider.OLLAMA, description="AI provider to use for this agent", enum=Provider)
+    client: Provider = Field(default=Provider.OLLAMA, description="AI provider to use for this agent")
     retries: int = Field(default=3, description="Number of retry attempts for failed requests")
-    
-    model_config = {
-        "extra": "forbid"  # Reject any parameters not defined in the model
-    }
 
 
 class AgentRunner:

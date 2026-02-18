@@ -2,6 +2,8 @@
 from typing import Optional, List, Union
 from pydantic import BaseModel
 
+from pydantic import BaseModel, ConfigDict
+
 class ToolNotFound(Exception):
     """ Exception for tools not declared"""
     def __init__(self, message):
@@ -31,6 +33,8 @@ class ToolError(Exception):
 
 class Function(BaseModel):
     """ Class defining function call descriptor """
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     arguments: Union[str, dict]
 
@@ -45,6 +49,8 @@ class Function(BaseModel):
 
 class ToolCall(BaseModel):
     """ Class definining tool call output """
+    model_config = ConfigDict(extra="forbid")
+
     id: Optional[str] = None
     type: Optional[str] = None
     function: Function
@@ -54,4 +60,6 @@ class ToolCall(BaseModel):
 
 class ToolCalls(BaseModel):
     """ Class representing client llm response message """
+    model_config = ConfigDict(extra="forbid")
+
     tool_calls: Optional[List[ToolCall]]
