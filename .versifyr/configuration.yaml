@@ -1,0 +1,9 @@
+
+# sample configuration file for versifyr
+files:
+  - name: toml
+    type: toml
+    path: pyproject.toml
+  - name: init
+    type: python
+    path: src/linden/__init__.py
