@@ -31,14 +31,14 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install build
           python -m pip install -e ".[test]"
-          
+
       - name: Test with pytest
         run: |
           pytest test/ --cov=src/linden --cov-report=xml
@@ -47,12 +47,12 @@ jobs:
         run: |
           ls -la
           find . -name "coverage.xml" -o -name "*.xml"
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          
+
       - name: Build release distributions
         run: |
           python -m build
@@ -72,7 +72,6 @@ jobs:
 
     environment:
       name: pypi
-
 
     steps:
       - name: Retrieve release distributions
