@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "linden"
-version = "0.4.0"
+# $versifyr:template={{ (printf "version = \"%s\"" .version) }}$
+version = "0.5.0"
 authors = [{ name = "Matteo Stabile", email = "matteo.stabile2@gmail.com" }]
 dependencies = [
     "docstring_parser==0.17.0",

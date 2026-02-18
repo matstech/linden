@@ -7,8 +7,8 @@ This package provides tools for creating AI agents with:
 - Function calling support
 - Configurable agent behaviors
 """
-
-__version__ = "0.4.0"
+# $versifyr:template={{ (printf "__version__ = \"%s\""  .version) }}$
+__version__ = "0.5.0"
 __author__ = "matstech"
 __email__ = "matteo.stabile2@gmail.com"
 
