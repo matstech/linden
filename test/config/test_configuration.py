@@ -172,6 +172,10 @@ api_key = "modified-anthropic-key"
 max_tokens = 8192
 timeout = 120
 
+[google]
+api_key = "google-test-key"
+timeout = 60
+
 [memory]
 path = "/tmp/linden-memory"
 collection_name= "test-memories"

@@ -15,6 +15,7 @@ from ..provider.groq import GroqClient
 from .model import ToolCall, ToolError, ToolNotFound
 from ..provider.ollama import Ollama
 from ..provider.openai import OpenAiClient
+from ..provider.google import GoogleClient
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +274,8 @@ class AgentRunner:
                     provider=provider)
                 if provider == Provider.ANTHROPIC:
                     tool_desc.append(doc_string)
+                elif provider == Provider.GOOGLE:
+                    tool_desc.append(doc_string)
                 else:
                     tool_desc.append({"type":"function", "function":doc_string})
             return tool_desc
@@ -294,5 +297,7 @@ class AgentRunner:
                 self.client = OpenAiClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
             case Provider.ANTHROPIC:
                 self.client = AnthropicClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
+            case Provider.GOOGLE:
+                self.client = GoogleClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
             case _:
                 self.client = Ollama(model=self.model, temperature=self.temperature, tools=self.tool_desc)
