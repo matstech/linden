@@ -3,14 +3,15 @@
 import logging
 from typing import Generator
 from ollama import ChatResponse, Options, GenerateResponse, Client
-from pydantic import BaseModel
-from .ai_client import BaseChatClient
+from pydantic import BaseModel, TypeAdapter
+from .ai_client import AiClient
+from ..core import model
 from ..memory.agent_memory import AgentMemory
 from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
 
-class Ollama(BaseChatClient):
+class Ollama(AiClient):
     """Defining Ollama integration"""
     def __init__(self, model:str, temperature: float,  tools = None):
         self.model = model
@@ -54,11 +55,6 @@ class Ollama(BaseChatClient):
             logger.error("Error in query_llm: %s", e)
             raise
 
-    def _extract_stream_content(self, chunk: ChatResponse) -> str | None:
-        if hasattr(chunk, 'message') and chunk.message:
-            return chunk.message.content if hasattr(chunk.message, 'content') else str(chunk.message)
-        return None
-
     def _generate_stream(self, memory: AgentMemory, response: ChatResponse) -> Generator[str, None, None]:
         """ Handles a streaming response by yielding content and updating memory.
 
@@ -71,7 +67,25 @@ class Ollama(BaseChatClient):
         Yields:
             str: Chunks of text content from the model response
         """
-        return self._stream_response(memory=memory, response=response, content_extractor=self._extract_stream_content)
+        def stream_generator():
+            full_response = []
+            try:
+                for chunk in response:
+                    if hasattr(chunk, 'message') and chunk.message:
+                        content = chunk.message.content if hasattr(chunk.message, 'content') else str(chunk.message)
+                        
+                        if content:
+                            full_response.append(content)
+                            yield content
+            except Exception as e:
+                logger.error("Error in stream_generator: %s", e)
+                raise
+            finally:
+                # Record the complete response in memory
+                if full_response:
+                    complete_content = "".join(full_response)
+                    memory.record({"role": "assistant", "content": complete_content})
+        return stream_generator()
 
     def _build_final_response(self, memory: AgentMemory, response: ChatResponse|GenerateResponse) -> tuple[str, list]:
         """ Processes a complete (non-streaming) response and updates memory.
@@ -84,11 +98,26 @@ class Ollama(BaseChatClient):
                 tuple[str, list]: A tuple containing (content, tool_calls) where content is the model's output 
                 and tool_calls is a list of tool calls (or None if no tools were called).
         """
+        # Extract content based on response type
         if not hasattr(response, 'message') and hasattr(response, 'response'):
             content = response.response
             tool_calls = None
         else:
             content = response.message.content
+            # Extract tool calls if present
             tool_calls = getattr(response.message, 'tool_calls', None)
 
-        return self._finalize_response(memory=memory, content=content, tool_calls=tool_calls)
+        tc = None
+        if tool_calls:
+            # tool_calls is a list of ChatCompletionMessageToolCall objects
+            # First convert them to dict (if they're not already)
+            tool_calls_dicts = [tc.model_dump() if hasattr(tc, "model_dump") else dict(tc) for tc in tool_calls]
+            # Then use TypeAdapter to validate the list as ToolCalls
+            tool_calls_adapter = TypeAdapter(list[model.ToolCall])
+            tc = tool_calls_adapter.validate_python(tool_calls_dicts)
+            # For tool calls, don't save to memory (result will be saved by AgentRunner)
+        else:
+            # Save to memory only normal text responses, not tool calls
+            memory.record({"role": "assistant", "content": content})
+
+        return (content, tc)

@@ -4,7 +4,7 @@ import logging
 from typing import Generator
 from anthropic import Anthropic, Stream
 from anthropic.types import Message, RawMessageStreamEvent
-from .ai_client import BaseChatClient
+from .ai_client import AiClient
 from ..core import model
 from ..memory.agent_memory import AgentMemory
 
@@ -12,7 +12,7 @@ from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
 
-class AnthropicClient(BaseChatClient):
+class AnthropicClient(AiClient):
     """Defining ANTHROPIC integration"""
     def __init__(self, model: str, temperature: float, tools =  None):
         self.model = model
@@ -56,11 +56,6 @@ class AnthropicClient(BaseChatClient):
             logger.error("Error in Anthropic query: %s", str(e))
             raise
 
-    def _extract_stream_content(self, event: RawMessageStreamEvent) -> str | None:
-        if event.type == 'content_block_delta' and hasattr(event.delta, 'text'):
-            return event.delta.text
-        return None
-
     def _generate_stream(self, memory: AgentMemory, response: Stream[RawMessageStreamEvent]) -> Generator[str, None, None]:
         """Handle streaming response with proper cleanup and error handling.
         
@@ -73,7 +68,27 @@ class AnthropicClient(BaseChatClient):
         Yields:
             str: Chunks of text content from the model response
         """
-        return self._stream_response(memory=memory, response=response, content_extractor=self._extract_stream_content)
+        def stream_generator():
+            full_response = []
+            try:
+                for event in response:
+                    # Handle text content chunks only (tools are not available in streaming mode)
+                    if event.type == 'content_block_delta':
+                        if hasattr(event.delta, 'text'):
+                            content = event.delta.text
+                            if content:
+                                full_response.append(content)
+                                yield content
+
+            except Exception as e:
+                logger.error("Error in stream_generator: %s", e)
+                raise
+            finally:
+                # Record the complete response in memory
+                if full_response:
+                    complete_content = "".join(full_response)
+                    memory.record({"role": "assistant", "content": complete_content})
+        return stream_generator()
 
     def _build_final_response(self, memory: AgentMemory, response: Message) -> tuple[str, list]:
         """Processes a complete (non-streaming) response and updates memory.
@@ -108,7 +123,7 @@ class AnthropicClient(BaseChatClient):
             tc.append(tool_call)
         else:
             # Save to memory only normal text responses, not tool calls
-            self._record_assistant_message(memory, content)
+            memory.record({"role": "assistant", "content": content})
 
         return (content, tc)
 
