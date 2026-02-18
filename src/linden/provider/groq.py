@@ -8,12 +8,12 @@ from groq.types.chat import ChatCompletion, ChatCompletionChunk
 
 from ..core import model
 from ..memory.agent_memory import AgentMemory
-from .ai_client import AiClient
+from .ai_client import BaseChatClient
 from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
 
-class GroqClient(AiClient):
+class GroqClient(BaseChatClient):
     """Defining GROQ integration"""
     def __init__(self, model: str, temperature: float, tools =  None):
         self.model = model
@@ -58,6 +58,12 @@ class GroqClient(AiClient):
             logger.error("Error in Groq query: %s", str(e))
             raise
 
+    def _extract_stream_content(self, chunk: ChatCompletionChunk) -> str | None:
+        if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
+            delta = chunk.choices[0].delta
+            return delta.content
+        return None
+
     def _generate_stream(self, memory: AgentMemory, response: Stream[ChatCompletionChunk]) -> Generator[str, None, None]:
         """Handle streaming response with proper cleanup and error handling.
         
@@ -70,26 +76,14 @@ class GroqClient(AiClient):
         Yields:
             str: Chunks of text content from the model response
         """
-        def stream_generator():
-            full_response = []
-            try:
-                for chunk in response:
-                    if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
-                        delta = chunk.choices[0].delta
-                        content = delta.content
+        return self._stream_response(memory=memory, response=response, content_extractor=self._extract_stream_content)
 
-                        if content:
-                            full_response.append(content)
-                            yield content
-            except Exception as e:
-                logger.error("Error in stream_generator: %s", e)
-                raise
-            finally:
-                # Record the complete response in memory
-                if full_response:
-                    complete_content = "".join(full_response)
-                    memory.record({"role": "assistant", "content": complete_content})
-        return stream_generator()
+    def _normalize_tool_calls(self, tool_calls: list | None) -> list | None:
+        if not tool_calls:
+            return None
+        tool_calls_dicts = [tc.model_dump() if hasattr(tc, "model_dump") else dict(tc) for tc in tool_calls]
+        tool_calls_adapter = TypeAdapter(list[model.ToolCall])
+        return tool_calls_adapter.validate_python(tool_calls_dicts)
 
     def _build_final_response(self, memory: AgentMemory, response: ChatCompletion) -> tuple[str, list]:
         """Processes a complete (non-streaming) response and updates memory.
@@ -107,23 +101,10 @@ class GroqClient(AiClient):
 
         if not hasattr(response, 'choices'):
             content = ''
-            tool_calls = None
         elif len(response.choices) > 0 and hasattr(response.choices[0], 'message') and hasattr(response.choices[0].message, 'content'):
-            content = response.choices[0].message.content
-            tool_calls = response.choices[0].message.tool_calls
+            message = response.choices[0].message
+            content = message.content
+            tool_calls = message.tool_calls
 
-        tc = None
-        if tool_calls:
-            # tool_calls is a list of ChatCompletionMessageToolCall objects
-            # First convert them to dict (if they're not already)
-            tool_calls_dicts = [tc.model_dump() if hasattr(tc, "model_dump") else dict(tc) for tc in tool_calls]
-            # Then use TypeAdapter to validate the list as ToolCalls
-            tool_calls_adapter = TypeAdapter(list[model.ToolCall])
-            tc = tool_calls_adapter.validate_python(tool_calls_dicts)
-            # For tool calls, don't save to memory (result will be saved by AgentRunner)
-        else:
-            # Save to memory only normal text responses, not tool calls
-            memory.record({"role": "assistant", "content": content})
-
-        return (content, tc)
+        return self._finalize_response(memory=memory, content=content, tool_calls=tool_calls)
 
