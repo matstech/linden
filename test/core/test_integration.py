@@ -135,7 +135,7 @@ def test_provider_integration():
 def test_memory_persistence_with_agent():
     """Test memory persistence through multiple agent sessions."""
     # Create a memory object
-    memory = AgentMemory(agent_id="test_agent_memory", user_id="test_user", system_prompt="You are a helpful assistant.")
+    memory = AgentMemory(agent_id="test_agent_memory", user_id="test_user", client=MagicMock(), system_prompt="You are a helpful assistant.")
     
     # Test basic memory functionality
     assert memory.agent_id == "test_agent_memory"
