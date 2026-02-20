@@ -62,6 +62,10 @@ class TestMemoryManager:
         mock_config = MagicMock()
         mock_config.openai.api_key = "test-api-key"
         mock_config.memory.path = "/tmp/test-memory"
+        mock_config.memory.llm_provider = "openai"
+        mock_config.memory.llm_model = "gpt-4o-mini"
+        mock_config.memory.embedder_provider = "openai"
+        mock_config.memory.embedder_model = "text-embedding-3-small"
         mock_config_manager.get.return_value = mock_config
         
         # Setup Memory mock
@@ -78,7 +82,13 @@ class TestMemoryManager:
         
         # Check that config contains expected values
         assert config_arg["llm"]["config"]["api_key"] == "test-api-key"
+        assert config_arg["llm"]["provider"] == "openai"
+        assert config_arg["llm"]["config"]["model"] == "gpt-4o-mini"
+        
         assert config_arg["embedder"]["config"]["api_key"] == "test-api-key"
+        assert config_arg["embedder"]["provider"] == "openai"
+        assert config_arg["embedder"]["config"]["model"] == "text-embedding-3-small"
+        
         assert config_arg["vector_store"]["config"]["path"] == "/tmp/test-memory"
         
         # Verify the returned memory instance is our mock

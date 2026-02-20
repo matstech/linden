@@ -81,9 +81,17 @@ class MemoryConfig:
     Attributes:
         path: File path for memory storage
         collection_name: Name of the memory collection
+        llm_provider: Provider for the LLM (e.g., 'openai', 'ollama')
+        llm_model: Model name for the LLM
+        embedder_provider: Provider for the embedder
+        embedder_model: Model name for the embedder
     """
     path: str
     collection_name: str
+    llm_provider: str = "openai"
+    llm_model: str = "gpt-4o-mini"
+    embedder_provider: str = "openai"
+    embedder_model: str = "text-embedding-3-small"
 
 
 @dataclass
