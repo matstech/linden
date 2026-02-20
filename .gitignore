@@ -210,3 +210,4 @@ venv
 
 # Local test project (do not commit)
 */linden-test/
+.python-version
