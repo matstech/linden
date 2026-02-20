@@ -9,6 +9,7 @@ def test_import_provider_package():
     assert hasattr(linden.provider, "OpenAiClient")
     assert hasattr(linden.provider, "GroqClient")
     assert hasattr(linden.provider, "Ollama")
+    assert hasattr(linden.provider, "GoogleClient")
 
 
 def test_import_openai_client():
@@ -33,7 +34,7 @@ def test_provider_init_has_all():
     """Test that __all__ is properly defined in the __init__.py file."""
     import linden.provider
     assert hasattr(linden.provider, "__all__")
-    assert set(linden.provider.__all__) == {"OpenAiClient", "GroqClient", "Ollama","Provider"}
+    assert set(linden.provider.__all__) == {"OpenAiClient", "GroqClient", "Ollama", "GoogleClient", "Provider"}
 
 
 def test_provider_modules_can_be_imported_directly():
@@ -41,7 +42,9 @@ def test_provider_modules_can_be_imported_directly():
     import linden.provider.openai
     import linden.provider.groq
     import linden.provider.ollama
+    import linden.provider.google
     
     assert hasattr(linden.provider.openai, "OpenAiClient")
     assert hasattr(linden.provider.groq, "GroqClient")
     assert hasattr(linden.provider.ollama, "Ollama")
+    assert hasattr(linden.provider.google, "GoogleClient")

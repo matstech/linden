@@ -144,18 +144,13 @@ class Configuration:
             openai_config.api_key = 'api-key'
         os.environ['OPENAI_API_KEY'] = openai_config.api_key
 
-        google_config = GoogleConfig(**data['google'])
-        if google_config.api_key is None or google_config.api_key == '':
-            google_config.api_key = 'api-key'
-        os.environ['GOOGLE_API_KEY'] = google_config.api_key
-
         return cls(
             models=ModelsConfig(**data['models']),
             groq=GroqConfig(**data['groq']),
             ollama=OllamaConfig(**data['ollama']),
             openai=openai_config,
             anthropic=AnthropicConfig(**data['anthropic']),
-            google=google_config,
+            google=GoogleConfig(**data['google']),
             memory=MemoryConfig(**data['memory'])
         )
 
