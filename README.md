@@ -53,11 +53,11 @@
 
 ## Overview
 
-Linden is a comprehensive AI agent framework that provides a unified interface for interacting with multiple Large Language Model (LLM) providers including OpenAI, Anthropic, Groq, and Ollama. It features persistent conversation memory, automatic tool/function calling, and robust error handling for building production-ready AI applications.
+Linden is a comprehensive AI agent framework that provides a unified interface for interacting with multiple Large Language Model (LLM) providers including OpenAI, Anthropic, Groq, Google (Gemini), and Ollama. It features persistent conversation memory, automatic tool/function calling, and robust error handling for building production-ready AI applications.
 
 ## Features
 
-- **Multi-Provider LLM Support**: Seamless integration with OpenAI, Anthropic, Groq, and Ollama
+- **Multi-Provider LLM Support**: Seamless integration with OpenAI, Anthropic, Groq, Google (Gemini), and Ollama
 - **Persistent Memory**: Long-term conversation memory using FAISS vector storage and embeddings
 - **Function Calling**: Automatic parsing and execution of tools with Google-style docstring support
 - **Streaming Support**: Real-time response streaming for interactive applications
@@ -80,6 +80,7 @@ pip install linden
   - `openai` - OpenAI API client
   - `anthropic` - Anthropic API client
   - `groq` - Groq API client  
+  - `google-genai` - Google Gemini client
   - `ollama` - Ollama local LLM client
   - `pydantic` - Data validation and serialization
   - `mem0` - Memory management
@@ -238,6 +239,10 @@ timeout = 30
 [ollama]
 timeout = 60
 
+[google]
+api_key = "your-google-api-key"
+timeout = 60
+
 [memory]
 path = "./memory_db"
 collection_name = "agent_memories"
@@ -251,6 +256,7 @@ Set your API keys as environment variables:
 export OPENAI_API_KEY="your-openai-api-key"
 export ANTHROPIC_API_KEY="your-anthropic-api-key"
 export GROQ_API_KEY="your-groq-api-key"
+export GOOGLE_API_KEY="your-google-api-key"
 ```
 
 ## Architecture
@@ -275,6 +281,7 @@ Abstract interface with concrete implementations:
 - **OpenAiClient**: OpenAI GPT models
 - **AnthropicClient**: Anthropic Claude models
 - **GroqClient**: Groq inference API
+- **GoogleClient**: Google Gemini models
 - **Ollama**: Local LLM execution
 
 #### Function Calling
@@ -419,6 +426,19 @@ groq_config = AgentConfiguration(
     client=Provider.GROQ
 )
 fast_agent = AgentRunner(config=groq_config)
+
+# Use Google Gemini
+# Assicurati di avere GOOGLE_API_KEY configurata o nel config.toml
+# tools devono essere nel formato supportato da Gemini (function_declarations)
+gemini_config = AgentConfiguration(
+    user_id="user123",
+    name="gemini_agent",
+    model="gemini-1.5-flash",
+    system_prompt="You are a helpful assistant.",
+    temperature=0.7,
+    client=Provider.GOOGLE,
+)
+gemini_agent = AgentRunner(config=gemini_config)
 ```
 
 ## API Reference

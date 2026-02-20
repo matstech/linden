@@ -17,7 +17,7 @@ class GoogleClient(BaseChatClient):
     def __init__(self, model: str, temperature: float, tools =  None):
         self.model = model
         self.temperature = temperature
-        self.tools = tools
+        self.tools = self._normalize_tools(tools)
         google_config = ConfigManager.get().google
         self.client = genai.Client(http_options=types.HttpOptions(timeout=google_config.timeout*1000), api_key=google_config.api_key)
         super().__init__()
@@ -77,6 +77,32 @@ class GoogleClient(BaseChatClient):
             logger.error("Error in Google query: %s", str(e))
             raise
 
+    def _normalize_tools(self, tools):
+        """Convert tool definitions to google.genai Tool objects."""
+        if not tools:
+            return None
+        normalized = []
+        for t in tools:
+            if isinstance(t, types.Tool):
+                normalized.append(t)
+                continue
+            if isinstance(t, dict):
+                fdecls = t.get("function_declarations") or t.get("functionDeclarations")
+                if fdecls:
+                    fd_objs = []
+                    for fd in fdecls:
+                        if not isinstance(fd, dict):
+                            continue
+                        fd_objs.append(
+                            types.FunctionDeclaration(
+                                name=fd.get("name"),
+                                description=fd.get("description"),
+                                parameters=fd.get("parameters"),
+                            )
+                        )
+                    normalized.append(types.Tool(function_declarations=fd_objs))
+        return normalized if normalized else None
+
     def _extract_stream_content(self, chunk: types.GenerateContentResponse) -> str | None:
         """Extract text content from a streaming GenerateContentResponse chunk."""
         if hasattr(chunk, "candidates") and chunk.candidates:
@@ -123,8 +149,14 @@ class GoogleClient(BaseChatClient):
         allowed_tool_names = set()
         if self.tools:
             for tool in self.tools:
-                if isinstance(tool, dict) and "functionDeclarations" in tool:
-                    for declaration in tool["functionDeclarations"]:
+                if isinstance(tool, types.Tool) and getattr(tool, "function_declarations", None):
+                    for declaration in tool.function_declarations:
+                        name = getattr(declaration, "name", None)
+                        if name:
+                            allowed_tool_names.add(name)
+                elif isinstance(tool, dict) and ("functionDeclarations" in tool or "function_declarations" in tool):
+                    decls = tool.get("functionDeclarations") or tool.get("function_declarations")
+                    for declaration in decls:
                         name = declaration.get("name") if isinstance(declaration, dict) else None
                         if name:
                             allowed_tool_names.add(name)
