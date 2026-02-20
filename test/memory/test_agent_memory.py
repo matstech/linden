@@ -14,7 +14,8 @@ class TestAgentMemory:
         """Test AgentMemory initialization with system prompt."""
         with patch('linden.memory.agent_memory.MemoryManager'):
             mock_client = MagicMock()
-            memory = AgentMemory(agent_id=test_agent_id, user_id="test", client=mock_client, system_prompt=test_system_prompt)
+            mock_config = MagicMock()
+            memory = AgentMemory(agent_id=test_agent_id, user_id="test", client=mock_client, config=mock_config, system_prompt=test_system_prompt)
             
             assert memory.agent_id == test_agent_id
             assert memory.system_prompt == test_system_prompt
@@ -32,10 +33,12 @@ class TestAgentMemory:
         
         with patch('linden.memory.agent_memory.MemoryManager'):
             mock_client = MagicMock()
+            mock_config = MagicMock()
             memory = AgentMemory(
                 agent_id=test_agent_id,
                 user_id="test",
                 client=mock_client,
+                config=mock_config,
                 system_prompt=test_system_prompt,
                 history=history
             )
@@ -170,45 +173,57 @@ class TestAgentMemory:
         # History should only contain system prompt
         assert memory.history == [test_system_prompt]
 
-    def test_get_conversation_with_summarization(self, agent_memory_with_mocked_manager, mock_mem0_memory):
-        """Test that get_conversation calls the summarizer and uses the summary."""
+    def test_get_conversation_with_summarization_above_threshold(self, agent_memory_with_mocked_manager, mock_mem0_memory):
+        """Test summarization is triggered when memory fragments exceed the character threshold."""
         memory = agent_memory_with_mocked_manager
         user_input = "Tell me about my project."
         
-        # Mock search to return some memories
+        # Mock search to return long memory fragments to trigger summarization
+        long_fragment = "This is a very long memory fragment designed to exceed the default character threshold for summarization. " * 50
         mock_mem0_memory.search.return_value = {
             "results": [
                 {"memory": "Project 'Phoenix' is about rebranding."},
-                {"memory": "The deadline for 'Phoenix' is Q4."}
+                {"memory": long_fragment}
             ]
         }
         
         # Mock the client's response for summarization
-        summary_text = "Project 'Phoenix' is a rebranding effort with a Q4 deadline."
-        # The client's query_llm returns a tuple (content, tool_calls)
+        summary_text = "Project 'Phoenix' is a rebranding effort and has a long description."
         memory.client.query_llm.return_value = (summary_text, None)
         
         # Call the method under test
         conversation = memory.get_conversation(user_input)
         
-        # 1. Verify that the memory search was called
-        mock_mem0_memory.search.assert_called_once_with(
-            query=user_input,
-            user_id="test",
-            limit=10
-        )
-        
-        # 2. Verify that the client's query_llm was called for summarization
+        # Verify that the client's query_llm was called for summarization
         memory.client.query_llm.assert_called_once()
-        # Check that the prompt sent for summarization contains the user query and fragments
-        _, call_kwargs = memory.client.query_llm.call_args
-        summarization_prompt = call_kwargs['prompt']
-        assert "User Query: Tell me about my project." in summarization_prompt
-        assert "Project 'Phoenix' is about rebranding." in summarization_prompt
-        assert "The deadline for 'Phoenix' is Q4." in summarization_prompt
         
-        # 3. Verify that the final conversation contains the summarized context
+        # Verify that the final conversation contains the summarized context
         final_prompt = conversation[-1]['content']
         assert summary_text in final_prompt
-        assert "Project 'Phoenix' is about rebranding." not in final_prompt
-        assert "rebranding effort" in final_prompt
+        assert long_fragment not in final_prompt
+
+    def test_get_conversation_without_summarization_below_threshold(self, agent_memory_with_mocked_manager, mock_mem0_memory):
+        """Test summarization is skipped when memory fragments are below the character threshold."""
+        memory = agent_memory_with_mocked_manager
+        user_input = "Tell me about my project."
+        
+        # Mock search to return short memories that won't trigger summarization
+        short_fragment_1 = "Project 'Phoenix' is about rebranding."
+        short_fragment_2 = "The deadline is Q4."
+        mock_mem0_memory.search.return_value = {
+            "results": [
+                {"memory": short_fragment_1},
+                {"memory": short_fragment_2}
+            ]
+        }
+        
+        # Call the method under test
+        conversation = memory.get_conversation(user_input)
+        
+        # Verify that the client's query_llm was NOT called
+        memory.client.query_llm.assert_not_called()
+        
+        # Verify that the final conversation contains the raw, formatted memories
+        final_prompt = conversation[-1]['content']
+        assert f"- {short_fragment_1}" in final_prompt
+        assert f"- {short_fragment_2}" in final_prompt

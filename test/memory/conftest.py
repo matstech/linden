@@ -4,6 +4,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 from pathlib import Path
 
+from linden.config.configuration import ConfigManager
 from linden.memory.agent_memory import MemoryManager, AgentMemory
 
 
@@ -45,16 +46,26 @@ def test_system_prompt():
 
 
 @pytest.fixture
-def agent_memory_with_mocked_manager(mock_memory_manager, test_agent_id, test_system_prompt):
-    """AgentMemory instance with mocked Memory manager."""
-    # Create a mock for the AiClient
+def agent_memory_with_mocked_manager(
+    mock_memory_manager, 
+    test_agent_id, 
+    test_system_prompt
+):
+    """AgentMemory instance with mocked Memory manager and config."""
+    # Create a mock for the AiClient and Config
     mock_client = MagicMock()
+    mock_config = MagicMock()
+    # Set a default threshold for tests
+    mock_config.memory.summarization_threshold_chars = 1500
+    
     agent_mem = AgentMemory(
         agent_id=test_agent_id,
         user_id="test",
         client=mock_client,
+        config=mock_config,
         system_prompt=test_system_prompt
     )
+    
     return agent_mem
 
 
@@ -93,9 +104,15 @@ timeout = 30
 api_key = "test-openai-key"
 timeout = 60
 
+[anthropic]
+api_key = "test-anthropic-key"
+max_tokens = 1024
+timeout = 60
+
 [memory]
 path = "{temp_memory_path}"
 collection_name = "test_memories"
+summarization_threshold_chars = 1500
 """
         temp.write(config_content.encode('utf-8'))
         temp_path = temp.name
