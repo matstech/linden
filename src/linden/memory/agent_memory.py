@@ -80,21 +80,32 @@ class MemoryManager:
     def _create_memory(self) -> Memory:
         """Create a new Memory instance with current configuration."""
         conf = ConfigManager.get()
+        
+        # Configure LLM based on provider
+        llm_config = {
+            "provider": conf.memory.llm_provider,
+            "config": {"model": conf.memory.llm_model}
+        }
+        
+        if conf.memory.llm_provider == "openai":
+            llm_config["config"]["api_key"] = conf.openai.api_key
+        elif conf.memory.llm_provider == "groq":
+            llm_config["config"]["api_key"] = conf.groq.api_key
+        elif conf.memory.llm_provider == "anthropic":
+             llm_config["config"]["api_key"] = conf.anthropic.api_key
+
+        # Configure Embedder based on provider
+        embedder_config = {
+            "provider": conf.memory.embedder_provider,
+            "config": {"model": conf.memory.embedder_model}
+        }
+        
+        if conf.memory.embedder_provider == "openai":
+             embedder_config["config"]["api_key"] = conf.openai.api_key
+        
         config = {
-            "llm": {
-                "provider": "openai",
-                "config": {
-                    "model": "gpt-4o-mini",
-                    "api_key": conf.openai.api_key
-                }
-            },
-            "embedder": {
-                "provider": "openai",
-                "config": {
-                    "model": "text-embedding-3-small",
-                    "api_key": conf.openai.api_key
-                }
-            },
+            "llm": llm_config,
+            "embedder": embedder_config,
             "vector_store": {
                 "provider": "faiss",
                 "config": {
