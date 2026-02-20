@@ -138,7 +138,7 @@ class AgentMemory:
     - Memory retrieval is filtered by agent_id to maintain isolation
     - This design prevents index conflicts while enabling efficient memory usage
     """
-    def __init__(self, agent_id: str, user_id: str, client, config, system_prompt: str = None, history: list[dict] = None):
+    def __init__(self, agent_id: str, user_id: str, client, config, system_prompt: str = None, history: list[dict] = None, history_max_messages: int = 20):
         """
         Initialize AgentMemory for a specific agent.
         
@@ -149,12 +149,14 @@ class AgentMemory:
             config: Configuration object
             system_prompt (str, optional): System prompt to initialize conversation history
             history (list, optional): Pre-existing conversation history
+            history_max_messages (int): Max messages before history is summarized
         """
         self.agent_id = agent_id
         self.user_id = user_id
         self.client = client
         self.config = config
         self.system_prompt = system_prompt
+        self.history_max_messages = history_max_messages
         self._memory_manager = MemoryManager()
         self._write_lock = threading.Lock()
 
@@ -280,3 +282,57 @@ class AgentMemory:
             logger.warning("Warning: Memory summarization failed, returning raw fragments: %s", e)
             # Fallback to returning the raw fragments if summarization fails
             return "\n".join([f"- {mem['memory']}" for mem in memories])
+
+    def _summarize_history(self, conversation_chunk: list[dict]) -> str:
+        """
+        Summarize a chunk of conversation history into a concise paragraph.
+        
+        Args:
+            conversation_chunk (list[dict]): A list of message dictionaries to summarize.
+            
+        Returns:
+            str: A synthesized, coherent paragraph summarizing the conversation.
+        """
+        if not conversation_chunk:
+            return ""
+            
+        history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in conversation_chunk])
+        
+        prompt = f"""
+        You are a helpful assistant. Summarize the following conversation history into a concise paragraph. This summary will be used as a condensed context for the ongoing conversation. Capture the key topics, decisions, and important information discussed.
+
+        Conversation to Summarize:
+        {history_text}
+
+        Summary:
+        """
+        
+        try:
+            summary, _ = self.client.query_llm(prompt=prompt, memory=None, stream=False)
+            return summary
+        except Exception as e:
+            logger.warning("Warning: History summarization failed: %s", e)
+            return "A summary of the previous conversation is unavailable due to an error."
+
+    def compress_history(self):
+        """
+        Checks if the history exceeds the max length and compresses it if necessary.
+        """
+        if len(self.history) > self.history_max_messages:
+            logger.info("History length (%d) exceeds max (%d). Compressing.", 
+                        len(self.history), self.history_max_messages)
+            
+            PRESERVE_RECENT_MESSAGES = 6 
+            
+            if len(self.history) > PRESERVE_RECENT_MESSAGES + 1:
+                system_prompt = self.history[0]
+                to_summarize = self.history[1:-PRESERVE_RECENT_MESSAGES]
+                recent_messages = self.history[-PRESERVE_RECENT_MESSAGES:]
+                
+                summary = self._summarize_history(to_summarize)
+                
+                self.history = [
+                    system_prompt,
+                    {"role": "system", "content": f"[Previous conversation summary: {summary}]"},
+                    *recent_messages
+                ]
