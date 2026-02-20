@@ -63,9 +63,9 @@ def agent_memory_with_mocked_manager(
         user_id="test",
         client=mock_client,
         config=mock_config,
-        system_prompt=test_system_prompt
-    )
-    
+        system_prompt=test_system_prompt,
+        history_max_messages=20 # Add default for tests
+    )    
     return agent_mem
 
 
