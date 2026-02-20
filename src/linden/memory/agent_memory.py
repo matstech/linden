@@ -138,16 +138,20 @@ class AgentMemory:
     - Memory retrieval is filtered by agent_id to maintain isolation
     - This design prevents index conflicts while enabling efficient memory usage
     """
-    def __init__(self, agent_id: str, user_id: str,  system_prompt: str = None, history: list[dict] = None):
+    def __init__(self, agent_id: str, user_id: str, client, system_prompt: str = None, history: list[dict] = None):
         """
         Initialize AgentMemory for a specific agent.
         
         Args:
             agent_id (str): Unique identifier for the agent
+            user_id (str): Unique identifier for the user
+            client: AI client for summarization
             system_prompt (str, optional): System prompt to initialize conversation history
+            history (list, optional): Pre-existing conversation history
         """
         self.agent_id = agent_id
         self.user_id = user_id
+        self.client = client
         self.system_prompt = system_prompt
         self._memory_manager = MemoryManager()
         self._write_lock = threading.Lock()
@@ -208,7 +212,7 @@ class AgentMemory:
                                                limit=10)
 
             if search_result.get('results'):
-                formatted_memories = "\n".join([f"- {mem['memory']}" for mem in search_result.get('results')])
+                summarized_context = self._summarize_memories(search_result.get('results'), user_input)
                 meta_prompt = f"""
                 {user_input}
 
@@ -216,7 +220,7 @@ class AgentMemory:
                 [System Instructions]: Before answering, review the following context retrieved from your long-term memory. 
                 Use this information to provide a more accurate and complete response.
 
-                Here is some relevant context from past conversations:\n{formatted_memories}
+                Here is some relevant context from past conversations:\n{summarized_context}
                 ---
                 """
                 self.history.append({"role": "user", "content": meta_prompt})
@@ -229,3 +233,39 @@ class AgentMemory:
         """Reset agent memory and conversation history."""
         self.history = []
         self._set_system_prompt()
+
+    def _summarize_memories(self, memories: list, query: str) -> str:
+        """
+        Summarize a list of memory fragments in the context of a user query.
+        
+        Args:
+            memories (list): A list of memory dictionaries from mem0.
+            query (str): The user's query to provide context for the summary.
+            
+        Returns:
+            str: A synthesized, coherent paragraph summarizing the memories.
+        """
+        if not memories:
+            return ""
+            
+        memory_fragments = "\n".join([f"- {mem['memory']}" for mem in memories])
+        
+        prompt = f"""
+        You are a helpful assistant. Synthesize the following long-term memory fragments into a concise, coherent paragraph relevant to the user's current query.
+
+        User Query: {query}
+
+        Memory Fragments:
+        {memory_fragments}
+
+        Synthesis:
+        """
+        
+        try:
+            # We pass a "null" memory to avoid recursive memory lookups
+            summary, _ = self.client.query_llm(prompt=prompt, memory=None, stream=False)
+            return summary
+        except Exception as e:
+            logger.warning("Warning: Memory summarization failed, returning raw fragments: %s", e)
+            # Fallback to returning the raw fragments if summarization fails
+            return "\n".join([f"- {mem['memory']}" for mem in memories])

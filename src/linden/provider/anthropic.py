@@ -37,14 +37,21 @@ class AnthropicClient(AiClient):
             tool_calls is a list of tool calls (or None) (if stream=False).
         """
         try:
+            if memory:
+                conversation = memory.get_conversation(user_input=prompt)
+                system_prompt = memory.get_system_prompt()
+            else:
+                # This is a summarization call, create a simple conversation
+                conversation = [{"role": "user", "content": prompt}]
+                system_prompt = {"role": "system", "content": ""}
 
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=ConfigManager.get().anthropic.max_tokens,
                 temperature=self.temperature,
                 stream=stream,
-                messages=memory.get_conversation(user_input=prompt)[1:],
-                system=[self._inject_output_format_info(memory.get_system_prompt(), output_format)],
+                messages=conversation[1:] if memory else conversation,
+                system=[self._inject_output_format_info(system_prompt, output_format)],
                 tools=self.tools  if self.tools and len(self.tools) > 0 else [])
 
             if stream:

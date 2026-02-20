@@ -91,7 +91,7 @@ class AgentRunner:
         self._set_client(client=config.client)
 
         # memory manager
-        self.memory = AgentMemory(agent_id=self.name, user_id=self.user_id, system_prompt=self.system_prompt, history=self.history)
+        self.memory = AgentMemory(agent_id=self.name, user_id=self.user_id, client=self.client, system_prompt=self.system_prompt, history=self.history)
 
         logger.info("Init agent %s", self.name)
 
