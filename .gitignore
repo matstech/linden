@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 .vscode
 venv
+
+# Local test project (do not commit)
+*/linden-test/

@@ -73,6 +73,20 @@ class AnthropicConfig:
     max_tokens: int
     timeout: int
 
+
+@dataclass
+class GoogleConfig:
+    """
+    Configuration for Google (Gemini) API client.
+    
+    Attributes:
+        api_key: Authentication key for Google GenAI
+        timeout: Request timeout in seconds
+    """
+    api_key: str
+    timeout: int
+
+
 @dataclass
 class MemoryConfig:
     """
@@ -99,6 +113,8 @@ class Configuration:
         groq: Configuration for Groq API
         ollama: Configuration for Ollama
         openai: Configuration for OpenAI API
+        anthropic: Configuration for Anthropic API
+        google: Configuration for Google GenAI API
         memory: Configuration for agent memory storage
     """
     models: ModelsConfig
@@ -106,6 +122,7 @@ class Configuration:
     ollama: OllamaConfig
     openai: OpenAIConfig
     anthropic: AnthropicConfig
+    google: GoogleConfig
     memory: MemoryConfig
 
     @classmethod
@@ -127,12 +144,18 @@ class Configuration:
             openai_config.api_key = 'api-key'
         os.environ['OPENAI_API_KEY'] = openai_config.api_key
 
+        google_config = GoogleConfig(**data['google'])
+        if google_config.api_key is None or google_config.api_key == '':
+            google_config.api_key = 'api-key'
+        os.environ['GOOGLE_API_KEY'] = google_config.api_key
+
         return cls(
             models=ModelsConfig(**data['models']),
             groq=GroqConfig(**data['groq']),
             ollama=OllamaConfig(**data['ollama']),
             openai=openai_config,
             anthropic=AnthropicConfig(**data['anthropic']),
+            google=google_config,
             memory=MemoryConfig(**data['memory'])
         )
 

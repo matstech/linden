@@ -12,6 +12,7 @@ from ..memory.agent_memory import AgentMemory
 from ..provider.ai_client import Provider
 from ..utils.doc_string_parser import parse_google_docstring
 from ..provider.groq import GroqClient
+from ..provider.google import GoogleClient
 from .model import ToolCall, ToolError, ToolNotFound
 from ..provider.ollama import Ollama
 from ..provider.openai import OpenAiClient
@@ -126,7 +127,10 @@ class AgentRunner:
         """
         # ensure client has all the tools set
         if self.client.tools is not None and len(self.client.tools) is not len(self.tools):
-            self.client.tools = self.tool_desc
+            if isinstance(self.client, GoogleClient):
+                self.client.tools = self.client._normalize_tools(self.tool_desc)
+            else:
+                self.client.tools = self.tool_desc
             stream = False # stream must be set to False if there are tools set
         u_input = user_question
         for turn in range(0, self.retries+1):
@@ -173,7 +177,10 @@ class AgentRunner:
                         if tool_name is None or tool_name != exc.tool_name:
                             temp_tools.append(tool)
                     if temp_tools:
-                        self.client.tools = temp_tools
+                        if isinstance(self.client, GoogleClient):
+                            self.client.tools = self.client._normalize_tools(temp_tools)
+                        else:
+                            self.client.tools = temp_tools
                 else:
                     err = exc.message
                 logger.warning("Error during agent execution: %s", err)
@@ -302,6 +309,8 @@ class AgentRunner:
                     provider=provider)
                 if provider == Provider.ANTHROPIC:
                     tool_desc.append(doc_string)
+                elif provider == Provider.GOOGLE:
+                    tool_desc.append(doc_string)
                 else:
                     tool_desc.append({"type":"function", "function":doc_string})
             return tool_desc
@@ -323,5 +332,7 @@ class AgentRunner:
                 self.client = OpenAiClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
             case Provider.ANTHROPIC:
                 self.client = AnthropicClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
+            case Provider.GOOGLE:
+                self.client = GoogleClient(model=self.model, temperature=self.temperature, tools=self.tool_desc)
             case _:
                 self.client = Ollama(model=self.model, temperature=self.temperature, tools=self.tool_desc)

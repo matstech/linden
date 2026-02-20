@@ -88,11 +88,11 @@ def parse_google_docstring(docstring: str, func_name: str = "function_name", inc
 
     if provider == Provider.GOOGLE:
         return {
-            "functionDeclarations": [
+            "function_declarations": [
                 {
                     "name": result["name"],
                     "description": result["description"],
-                    "parametersJsonSchema": result["parameters_json_schema"],
+                    "parameters": result["parameters"],
                 }
             ]
         }
