@@ -47,7 +47,14 @@ def test_system_prompt():
 @pytest.fixture
 def agent_memory_with_mocked_manager(mock_memory_manager, test_agent_id, test_system_prompt):
     """AgentMemory instance with mocked Memory manager."""
-    agent_mem = AgentMemory(agent_id=test_agent_id, user_id="test", system_prompt=test_system_prompt)
+    # Create a mock for the AiClient
+    mock_client = MagicMock()
+    agent_mem = AgentMemory(
+        agent_id=test_agent_id,
+        user_id="test",
+        client=mock_client,
+        system_prompt=test_system_prompt
+    )
     return agent_mem
 
 

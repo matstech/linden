@@ -9,6 +9,7 @@ from groq.types.chat import ChatCompletion, ChatCompletionChunk
 from ..core import model
 from ..memory.agent_memory import AgentMemory
 from .ai_client import AiClient
+from .helpers import prepare_conversation
 from ..config.configuration import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -38,8 +39,7 @@ class GroqClient(AiClient):
             tool_calls is a list of tool calls (or None) (if stream=False).
         """
         try:
-
-            conversation = memory.get_conversation(user_input=prompt)
+            conversation = prepare_conversation(prompt, memory)
 
             response = self.client.chat.completions.create(
                 model=self.model,
