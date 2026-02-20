@@ -51,6 +51,7 @@ class AgentConfiguration(BaseModel):
     output_type: Any = Field(default=None, description="Pydantic model for the output format of the agent")
     client: Provider = Field(default=Provider.OLLAMA, description="AI provider to use for this agent")
     retries: int = Field(default=3, description="Number of retry attempts for failed requests")
+    history_max_messages: int = Field(default=20, description="Maximum number of messages to keep in history before summarizing")
 
 
 class AgentRunner:
@@ -98,7 +99,8 @@ class AgentRunner:
                                   client=self.client, 
                                   config=ConfigManager.get(), 
                                   system_prompt=self.system_prompt, 
-                                  history=self.history)
+                                  history=self.history,
+                                  history_max_messages=config.history_max_messages)
 
         logger.info("Init agent %s", self.name)
 
@@ -138,6 +140,10 @@ class AgentRunner:
         u_input = user_question
         for turn in range(0, self.retries+1):
             logger.info("Turn %d", turn)
+            
+            # Compress history if it's too long, before adding the new user message
+            self.memory.compress_history()
+            
             self.memory.record({"role": "user", "content": u_input})
             turn+=1
             try:

@@ -15,7 +15,7 @@ class TestAgentMemory:
         with patch('linden.memory.agent_memory.MemoryManager'):
             mock_client = MagicMock()
             mock_config = MagicMock()
-            memory = AgentMemory(agent_id=test_agent_id, user_id="test", client=mock_client, config=mock_config, system_prompt=test_system_prompt)
+            memory = AgentMemory(agent_id=test_agent_id, user_id="test", client=mock_client, config=mock_config, system_prompt=test_system_prompt, history_max_messages=20)
             
             assert memory.agent_id == test_agent_id
             assert memory.system_prompt == test_system_prompt
@@ -40,7 +40,8 @@ class TestAgentMemory:
                 client=mock_client,
                 config=mock_config,
                 system_prompt=test_system_prompt,
-                history=history
+                history=history,
+                history_max_messages=20
             )
             
             # Should override the history with system prompt
@@ -227,3 +228,33 @@ class TestAgentMemory:
         final_prompt = conversation[-1]['content']
         assert f"- {short_fragment_1}" in final_prompt
         assert f"- {short_fragment_2}" in final_prompt
+
+    def test_compress_history_summarizes_long_history(self, agent_memory_with_mocked_manager):
+        """Test that compress_history correctly summarizes a long history."""
+        memory = agent_memory_with_mocked_manager
+        # Set a short limit to trigger compression
+        memory.history_max_messages = 10
+        
+        # Create a long history
+        long_history = [{"role": "system", "content": "System Prompt"}]
+        for i in range(6): # 12 messages
+            long_history.append({"role": "user", "content": f"User message {i+1}"})
+            long_history.append({"role": "assistant", "content": f"Assistant message {i+1}"})
+        memory.history = long_history
+
+        # Mock the summarization call
+        summary_text = "This is a summary of the old conversation."
+        memory.client.query_llm.return_value = (summary_text, None)
+        
+        # Action
+        memory.compress_history()
+        
+        # Assertions
+        memory.client.query_llm.assert_called_once()
+        
+        # New length: 1 (sys) + 1 (summary) + 6 (preserved) = 8
+        assert len(memory.history) == 8
+        assert memory.history[1]['role'] == "system"
+        assert summary_text in memory.history[1]['content']
+        assert "User message 1" not in str(memory.history) # Old message should be gone
+        assert "User message 4" in str(memory.history) # Recent message should be present
