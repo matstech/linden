@@ -15,6 +15,8 @@ from ..provider.groq import GroqClient
 from .model import ToolCall, ToolError, ToolNotFound
 from ..provider.ollama import Ollama
 from ..provider.openai import OpenAiClient
+from ..config.configuration import ConfigManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +93,12 @@ class AgentRunner:
         self._set_client(client=config.client)
 
         # memory manager
-        self.memory = AgentMemory(agent_id=self.name, user_id=self.user_id, client=self.client, system_prompt=self.system_prompt, history=self.history)
+        self.memory = AgentMemory(agent_id=self.name, 
+                                  user_id=self.user_id, 
+                                  client=self.client, 
+                                  config=ConfigManager.get(), 
+                                  system_prompt=self.system_prompt, 
+                                  history=self.history)
 
         logger.info("Init agent %s", self.name)
 

@@ -92,6 +92,7 @@ class MemoryConfig:
     llm_model: str = "gpt-4o-mini"
     embedder_provider: str = "openai"
     embedder_model: str = "text-embedding-3-small"
+    summarization_threshold_chars: int = 1500
 
 
 @dataclass

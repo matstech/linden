@@ -138,7 +138,7 @@ class AgentMemory:
     - Memory retrieval is filtered by agent_id to maintain isolation
     - This design prevents index conflicts while enabling efficient memory usage
     """
-    def __init__(self, agent_id: str, user_id: str, client, system_prompt: str = None, history: list[dict] = None):
+    def __init__(self, agent_id: str, user_id: str, client, config, system_prompt: str = None, history: list[dict] = None):
         """
         Initialize AgentMemory for a specific agent.
         
@@ -146,12 +146,14 @@ class AgentMemory:
             agent_id (str): Unique identifier for the agent
             user_id (str): Unique identifier for the user
             client: AI client for summarization
+            config: Configuration object
             system_prompt (str, optional): System prompt to initialize conversation history
             history (list, optional): Pre-existing conversation history
         """
         self.agent_id = agent_id
         self.user_id = user_id
         self.client = client
+        self.config = config
         self.system_prompt = system_prompt
         self._memory_manager = MemoryManager()
         self._write_lock = threading.Lock()
@@ -210,9 +212,18 @@ class AgentMemory:
             search_result = self.memory.search(query=user_input,
                                                user_id=self.user_id,
                                                limit=10)
+            fragments = search_result.get('results')
+            if fragments:
+                
+                total_chars = sum(len(mem['memory']) for mem in fragments)
+                
+                if total_chars > self.config.memory.summarization_threshold_chars:
+                    # Summarize if the total length of memories exceeds the threshold
+                    context_str = self._summarize_memories(fragments, user_input)
+                else:
+                    # Otherwise, just format the raw memories
+                    context_str = "\n".join([f"- {mem['memory']}" for mem in fragments])
 
-            if search_result.get('results'):
-                summarized_context = self._summarize_memories(search_result.get('results'), user_input)
                 meta_prompt = f"""
                 {user_input}
 
@@ -220,7 +231,7 @@ class AgentMemory:
                 [System Instructions]: Before answering, review the following context retrieved from your long-term memory. 
                 Use this information to provide a more accurate and complete response.
 
-                Here is some relevant context from past conversations:\n{summarized_context}
+                Here is some relevant context from past conversations:\n{context_str}
                 ---
                 """
                 self.history.append({"role": "user", "content": meta_prompt})
