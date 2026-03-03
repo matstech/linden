@@ -34,33 +34,71 @@ class TestConfiguration:
         assert config.anthropic.max_tokens == 4096
         assert config.memory.path == "/tmp/linden-memory"
     
-    def test_from_file_sets_openai_env_var(self, temp_config_file):
-        """Test that Configuration.from_file sets OPENAI_API_KEY environment variable."""
-        # Store the original value to restore later
-        original_openai_key = os.environ.get('OPENAI_API_KEY')
-        
-        try:
-            # Remove the environment variable if it exists
-            if 'OPENAI_API_KEY' in os.environ:
-                del os.environ['OPENAI_API_KEY']
-            
-            # Load the configuration
-            Configuration.from_file(temp_config_file)
-            
-            # Check that the environment variable was set
-            assert os.environ.get('OPENAI_API_KEY') == "openai-test-key"
-        
-        finally:
-            # Restore the original value or remove it
-            if original_openai_key is not None:
-                os.environ['OPENAI_API_KEY'] = original_openai_key
-            elif 'OPENAI_API_KEY' in os.environ:
-                del os.environ['OPENAI_API_KEY']
-    
     def test_from_file_with_invalid_path(self):
         """Test that Configuration.from_file raises FileNotFoundError for invalid file path."""
         with pytest.raises(FileNotFoundError):
             Configuration.from_file("non_existent_config_file.toml")
+
+    def test_env_var_overrides_toml_api_key(self, temp_config_file, monkeypatch):
+        """Test that an environment variable for an API key overrides the value in the TOML file."""
+        monkeypatch.setenv("OPENAI_API_KEY", "key_from_env")
+        config = Configuration.from_file(temp_config_file)
+        assert config.openai.api_key == "key_from_env"
+
+    def test_env_var_loads_api_key_if_missing_in_toml(self, monkeypatch):
+        """Test that an API key is loaded from an env var if it's not in the TOML file."""
+        # Create a config file without an OpenAI API key
+        toml_content = b"""
+[models]
+dec = "test"
+tool = "test"
+extractor = "test"
+speaker = "test"
+[openai]
+timeout = 30
+[groq]
+[ollama]
+timeout = 30
+[anthropic]
+[google]
+        """
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".toml", delete=False) as temp:
+            temp.write(toml_content)
+            temp_path = temp.name
+
+        try:
+            monkeypatch.setenv("OPENAI_API_KEY", "only_from_env")
+            config = Configuration.from_file(temp_path)
+            assert config.openai.api_key == "only_from_env"
+        finally:
+            os.unlink(temp_path)
+
+    def test_config_loads_without_memory_section(self):
+        """Test that the configuration loads successfully when the [memory] section is missing."""
+        toml_content = b"""
+[models]
+dec = "test"
+tool = "test"
+extractor = "test"
+speaker = "test"
+[openai]
+timeout = 30
+[groq]
+[ollama]
+timeout = 30
+[anthropic]
+[google]
+        """
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".toml", delete=False) as temp:
+            temp.write(toml_content)
+            temp_path = temp.name
+
+        try:
+            config = Configuration.from_file(temp_path)
+            assert config.memory is None
+        finally:
+            os.unlink(temp_path)
+
 
 
 class TestConfigManager:

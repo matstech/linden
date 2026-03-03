@@ -3,6 +3,7 @@
 # pylint: disable=C0116
 # pylint: disable=C0303
 from unittest.mock import patch, MagicMock
+import os
 from linden.memory.agent_memory import AgentMemory
 
 
@@ -258,3 +259,62 @@ class TestAgentMemory:
         assert summary_text in memory.history[1]['content']
         assert "User message 1" not in str(memory.history) # Old message should be gone
         assert "User message 4" in str(memory.history) # Recent message should be present
+
+
+import tempfile
+import pytest
+from linden.config.configuration import ConfigManager
+from linden.memory.agent_memory import MemoryManager
+
+class TestMemoryManager:
+    def setup_method(self):
+        """Reset singletons before each test."""
+        ConfigManager.reset()
+        # Directly access the singleton's internal reset method
+        if MemoryManager._instance:
+            MemoryManager._instance.reset_memory()
+
+    def teardown_method(self):
+        """Reset singletons after each test."""
+        ConfigManager.reset()
+        if MemoryManager._instance:
+            MemoryManager._instance.reset_memory()
+
+    def test_create_memory_raises_error_if_config_missing(self):
+        """
+        Test that MemoryManager._create_memory raises ValueError
+        if the [memory] section is missing in the config.
+        """
+        # 1. Create a config file without the [memory] section
+        toml_content = b"""
+[models]
+dec = "test"
+tool = "test"
+extractor = "test"
+speaker = "test"
+# Empty sections to satisfy the dataclass
+[openai]
+[groq]
+[ollama]
+[anthropic]
+[google]
+        """
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".toml", delete=False) as temp:
+            temp.write(toml_content)
+            temp_path = temp.name
+
+        try:
+            # 2. Initialize the ConfigManager with this partial config
+            ConfigManager.initialize(temp_path)
+            
+            # 3. Get a MemoryManager instance
+            manager = MemoryManager()
+
+            # 4. Assert that calling get_memory() raises the specific ValueError
+            with pytest.raises(ValueError) as exc_info:
+                manager.get_memory()
+            
+            assert "configuration section is missing" in str(exc_info.value)
+
+        finally:
+            os.unlink(temp_path)

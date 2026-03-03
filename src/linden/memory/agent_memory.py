@@ -80,6 +80,11 @@ class MemoryManager:
     def _create_memory(self) -> Memory:
         """Create a new Memory instance with current configuration."""
         conf = ConfigManager.get()
+        if conf.memory is None:
+            raise ValueError(
+                "Long-term memory is enabled, but the [memory] configuration section is missing "
+                "in your configuration file."
+            )
         
         # Configure LLM based on provider
         llm_config = {
