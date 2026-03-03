@@ -12,12 +12,6 @@ def temp_config_file():
     with tempfile.NamedTemporaryFile(mode="wb", suffix=".toml", delete=False) as temp:
         # Write a minimal valid configuration
         temp.write(b"""
-[models]
-dec = "gpt-4o"
-tool = "gpt-4-turbo"
-extractor = "gpt-3.5-turbo"
-speaker = "claude-3-opus"
-
 [groq]
 base_url = "https://api.groq.com/openai/v1"
 api_key = "groq-test-key"
@@ -88,12 +82,6 @@ def temp_incomplete_config_file():
     with tempfile.NamedTemporaryFile(mode="wb", suffix=".toml", delete=False) as temp:
         # Write incomplete configuration (missing some required sections)
         temp.write(b"""
-[models]
-dec = "gpt-4o"
-tool = "gpt-4-turbo"
-extractor = "gpt-3.5-turbo"
-speaker = "claude-3-opus"
-
 [openai]
 api_key = "openai-test-key"
 timeout = 60
@@ -114,12 +102,6 @@ def temp_dir_with_config():
     # Write a valid configuration
     with open(config_path, "wb") as f:
         f.write(b"""
-[models]
-dec = "gpt-4o"
-tool = "gpt-4-turbo"
-extractor = "gpt-3.5-turbo"
-speaker = "claude-3-opus"
-
 [groq]
 base_url = "https://api.groq.com/openai/v1"
 api_key = "groq-test-key"

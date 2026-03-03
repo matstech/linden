@@ -6,7 +6,7 @@ import tempfile
 import pytest
 
 from linden.config.configuration import (
-    Configuration, ConfigManager, ModelsConfig, GroqConfig, 
+    Configuration, ConfigManager, GroqConfig, 
     OllamaConfig, OpenAIConfig, AnthropicConfig, MemoryConfig
 )
 
@@ -17,7 +17,6 @@ class TestConfiguration:
         config = Configuration.from_file(temp_config_file)
         
         # Check that all sections are loaded
-        assert isinstance(config.models, ModelsConfig)
         assert isinstance(config.groq, GroqConfig)
         assert isinstance(config.ollama, OllamaConfig)
         assert isinstance(config.openai, OpenAIConfig)
@@ -25,8 +24,6 @@ class TestConfiguration:
         assert isinstance(config.memory, MemoryConfig)
         
         # Check specific values
-        assert config.models.dec == "gpt-4o"
-        assert config.models.tool == "gpt-4-turbo"
         assert config.groq.base_url == "https://api.groq.com/openai/v1"
         assert config.groq.api_key == "groq-test-key"
         assert config.openai.api_key == "openai-test-key"
@@ -122,7 +119,7 @@ class TestConfigManager:
         
         # Check that it's a valid Configuration instance
         assert isinstance(config, Configuration)
-        assert config.models.dec == "gpt-4o"
+        assert config.openai.api_key == "openai-test-key"
     
     def test_get_with_explicit_path(self, temp_config_file):
         """Test that ConfigManager.get with an explicit path initializes and returns config."""
@@ -224,7 +221,6 @@ collection_name= "test-memories"
         
         # Check that the configuration was updated
         config = ConfigManager.get()
-        assert config.models.dec == "modified-model"
         assert config.openai.api_key == "modified-key"
         assert config.anthropic.api_key == "modified-anthropic-key"
         assert config.anthropic.max_tokens == 8192
