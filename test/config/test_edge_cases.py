@@ -15,102 +15,6 @@ from linden.config.configuration import (
 )
 
 
-class TestConfigurationEdgeCases:
-    def test_openai_api_key_empty(self, temp_config_file):
-        """Test that empty OpenAI API key is replaced with a default value."""
-        # Modify the config file to have an empty API key
-        with open(temp_config_file, "rb") as f:
-            data = tomllib.load(f)
-        
-        with open(temp_config_file, "wb") as f:
-            # Set empty API key
-            data_str = """
-[models]
-dec = "gpt-4o"
-tool = "gpt-4-turbo"
-extractor = "gpt-3.5-turbo"
-speaker = "claude-3-opus"
-
-[groq]
-base_url = "https://api.groq.com/openai/v1"
-api_key = "groq-test-key"
-timeout = 60
-
-[ollama]
-timeout = 30
-
-[openai]
-api_key = ""
-timeout = 60
-
-[anthropic]
-api_key = "anthropic-test-key"
-max_tokens = 4096
-timeout = 60
-
-[google]
-api_key = "google-test-key"
-timeout = 60
-
-[memory]
-path = "/tmp/linden-memory"
-collection_name= "test_memories"
-"""
-            f.write(data_str.encode('utf-8'))
-        
-        # Load the configuration
-        config = Configuration.from_file(temp_config_file)
-        
-        # Check that the API key was replaced with the default value
-        assert config.openai.api_key == "api-key"
-        assert os.environ.get('OPENAI_API_KEY') == "api-key"
-    
-    def test_openai_api_key_none(self, temp_config_file):
-        """Test that None OpenAI API key is replaced with a default value."""
-        # Modify the config file to have None as the API key (using empty string since TOML doesn't support null)
-        with open(temp_config_file, "wb") as f:
-            data_str = """
-[models]
-dec = "gpt-4o"
-tool = "gpt-4-turbo"
-extractor = "gpt-3.5-turbo"
-speaker = "claude-3-opus"
-
-[groq]
-base_url = "https://api.groq.com/openai/v1"
-api_key = "groq-test-key"
-timeout = 60
-
-[ollama]
-timeout = 30
-
-[openai]
-api_key = ""
-timeout = 60
-
-[anthropic]
-api_key = "anthropic-test-key"
-max_tokens = 4096
-timeout = 60
-
-[google]
-api_key = "google-test-key"
-timeout = 60
-
-[memory]
-path = "/tmp/linden-memory"
-collection_name= "test_memories"
-"""
-            f.write(data_str.encode('utf-8'))
-        
-        # Load the configuration
-        config = Configuration.from_file(temp_config_file)
-        
-        # Check that the API key was replaced with the default value
-        assert config.openai.api_key == "api-key"
-        assert os.environ.get('OPENAI_API_KEY') == "api-key"
-
-
 class TestConfigManagerEdgeCases:
     def setup_method(self):
         """Reset ConfigManager before each test."""
@@ -210,11 +114,6 @@ class TestConfigTOMLErrors:
         """Test that invalid TOML syntax raises a ParseError."""
         with pytest.raises(tomllib.TOMLDecodeError):
             Configuration.from_file(temp_invalid_config_file)
-    
-    def test_missing_required_sections(self, temp_incomplete_config_file):
-        """Test that missing required sections raise KeyError."""
-        with pytest.raises(KeyError):
-            Configuration.from_file(temp_incomplete_config_file)
     
     @patch('builtins.open', new_callable=mock_open, read_data=b"")
     def test_empty_config_file(self, mock_file):

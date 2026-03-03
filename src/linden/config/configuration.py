@@ -33,9 +33,9 @@ class GroqConfig:
         api_key: Authentication key for Groq API
         timeout: Request timeout in seconds
     """
-    base_url: str
-    api_key: str
-    timeout: int
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    timeout: Optional[int] = 60
 
 @dataclass
 class OllamaConfig:
@@ -45,7 +45,7 @@ class OllamaConfig:
     Attributes:
         timeout: Request timeout in seconds
     """
-    timeout: int
+    timeout: Optional[int] = 30
 
 
 @dataclass
@@ -57,8 +57,8 @@ class OpenAIConfig:
         api_key: Authentication key for OpenAI API
         timeout: Request timeout in seconds
     """
-    api_key: str
-    timeout: int
+    api_key: Optional[str] = None
+    timeout: Optional[int] = 60
     
 @dataclass
 class AnthropicConfig:
@@ -69,9 +69,9 @@ class AnthropicConfig:
         api_key: Authentication key for Anthropic API
         timeout: Request timeout in seconds
     """
-    api_key: str
-    max_tokens: int
-    timeout: int
+    api_key: Optional[str] = None
+    max_tokens: int = 1024
+    timeout: int = 60
 
 
 @dataclass
@@ -83,8 +83,8 @@ class GoogleConfig:
         api_key: Authentication key for Google GenAI
         timeout: Request timeout in seconds
     """
-    api_key: str
-    timeout: int
+    api_key: Optional[str] = None
+    timeout: Optional[int] = 60
 
 
 @dataclass
@@ -132,12 +132,14 @@ class Configuration:
     openai: OpenAIConfig
     anthropic: AnthropicConfig
     google: GoogleConfig
-    memory: MemoryConfig
+    memory: Optional[MemoryConfig] = None
 
     @classmethod
     def from_file(cls, file_path: str | Path) -> 'Configuration':
         """
         Create a Configuration instance from a TOML file.
+        This method also loads API keys from standard environment variables 
+        (e.g., OPENAI_API_KEY), which take precedence over values in the TOML file.
         
         Args:
             file_path: Path to the TOML configuration file
@@ -148,19 +150,48 @@ class Configuration:
         with open(file_path, 'rb') as f:
             data = tomllib.load(f)
 
-        openai_config = OpenAIConfig(**data['openai'])
-        if openai_config.api_key is None or openai_config.api_key == '':
-            openai_config.api_key = 'api-key'
-        os.environ['OPENAI_API_KEY'] = openai_config.api_key
+        # Load configurations, giving priority to environment variables for API keys
+        openai_data = data.get('openai', {})
+        openai_config = OpenAIConfig(
+            api_key=os.getenv('OPENAI_API_KEY') or openai_data.get('api_key'),
+            timeout=openai_data.get('timeout', 60)
+        )
+
+        groq_data = data.get('groq', {})
+        groq_config = GroqConfig(
+            api_key=os.getenv('GROQ_API_KEY') or groq_data.get('api_key'),
+            base_url=groq_data.get('base_url'),
+            timeout=groq_data.get('timeout', 60)
+        )
+
+        anthropic_data = data.get('anthropic', {})
+        anthropic_config = AnthropicConfig(
+            api_key=os.getenv('ANTHROPIC_API_KEY') or anthropic_data.get('api_key'),
+            max_tokens=anthropic_data.get('max_tokens', 1024),
+            timeout=anthropic_data.get('timeout', 60)
+        )
+
+        google_data = data.get('google', {})
+        google_config = GoogleConfig(
+            api_key=os.getenv('GOOGLE_API_KEY') or google_data.get('api_key'),
+            timeout=google_data.get('timeout', 60)
+        )
+
+        ollama_data = data.get('ollama', {})
+        ollama_config = OllamaConfig(timeout=ollama_data.get('timeout', 30))
+        
+        # Load memory configuration if it exists
+        memory_data = data.get('memory')
+        memory_config = MemoryConfig(**memory_data) if memory_data else None
 
         return cls(
             models=ModelsConfig(**data['models']),
-            groq=GroqConfig(**data['groq']),
-            ollama=OllamaConfig(**data['ollama']),
+            groq=groq_config,
+            ollama=ollama_config,
             openai=openai_config,
-            anthropic=AnthropicConfig(**data['anthropic']),
-            google=GoogleConfig(**data['google']),
-            memory=MemoryConfig(**data['memory'])
+            anthropic=anthropic_config,
+            google=google_config,
+            memory=memory_config
         )
 
 
