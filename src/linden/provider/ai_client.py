@@ -81,7 +81,7 @@ class BaseChatClient(AiClient):
 
         return stream_generator()
 
-    def _record_assistant_message(self, memory: AgentMemory, content: str | None) -> None:
+    def _record_assistant_message(self, memory: AgentMemory | None, content: str | None) -> None:
         """Record the assistant response in memory if available."""
-        if content:
+        if content and memory:
             memory.record({"role": "assistant", "content": content})
