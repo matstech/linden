@@ -53,7 +53,7 @@ class AgentConfiguration(BaseModel):
     client: Provider = Field(default=Provider.OLLAMA, description="AI provider to use for this agent")
     retries: int = Field(default=3, description="Number of retry attempts for failed requests")
     history_max_messages: int = Field(default=20, description="Maximum number of messages to keep in history before summarizing")
-    enable_memory: bool = Field(default=True, description="Enable or disable agent memory")
+    enable_memory: bool = Field(default=True, description="Enable or disable persistent long-term memory. If False, the agent will only remember the current session's conversation history. Defaults to True.")
 
 
 class AgentRunner:

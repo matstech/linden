@@ -213,7 +213,19 @@ print(f"Name: {result.name}, Age: {result.age}")
 
 ## Configuration
 
-Create a `config.toml` file in your project root:
+Linden is configured through a `config.toml` file and/or environment variables.
+
+### Priority
+
+Configuration values are loaded with the following priority:
+1.  **Environment Variables** (e.g., `OPENAI_API_KEY`)
+2.  **`config.toml` file**
+
+This allows you to securely provide API keys in your deployment environment, overriding any values in your local configuration file.
+
+### `config.toml`
+
+Create a `config.toml` file in your project root. All sections for providers you do not use can be omitted.
 
 ```toml
 [models]
@@ -223,34 +235,35 @@ extractor = "gpt-3.5-turbo"
 speaker = "gpt-4"
 
 [openai]
-api_key = "your-openai-api-key"
+api_key = "your-openai-api-key" # Overridden by env var if set
 timeout = 30
 
 [anthropic]
-api_key = "your-anthropic-api-key"
+api_key = "your-anthropic-api-key" # Overridden by env var if set
 timeout = 30
 max_tokens = 1024 #example
 
 [groq]
 base_url = "https://api.groq.com/openai/v1"
-api_key = "your-groq-api-key" 
+api_key = "your-groq-api-key" # Overridden by env var if set
 timeout = 30
 
 [ollama]
 timeout = 60
 
 [google]
-api_key = "your-google-api-key"
+api_key = "your-google-api-key" # Overridden by env var if set
 timeout = 60
 
 [memory]
+# This entire section is optional if you disable long-term memory on your agents.
 path = "./memory_db"
 collection_name = "agent_memories"
 ```
 
 ### Environment Variables
 
-Set your API keys as environment variables:
+You can set your API keys as environment variables. These will take precedence over any keys defined in `config.toml`.
 
 ```bash
 export OPENAI_API_KEY="your-openai-api-key"
@@ -384,12 +397,34 @@ agent.reset()
 
 # Add context without user interaction
 agent.add_to_context("Important context information", persist=True)
+```
 
-# Get conversation history
-history = agent.memory.get_conversation("Current query")
+### Agents without Long-Term Memory
+
+By default, all agents use both short-term (session) and long-term (persistent) memory. You can disable the long-term memory for agents that only need conversational context for a single session. This also removes the need to have the `[memory]` section in your `config.toml`.
+
+```python
+from linden.core import AgentRunner, AgentConfiguration
+
+# Set enable_memory to False in the configuration
+config = AgentConfiguration(
+    user_id="user456", 
+    name="stateless_chat_bot", 
+    model="gpt-4", 
+    system_prompt="You are a helpful assistant with no long-term memory.",
+    enable_memory=False  # This disables long-term persistence
+)
+agent = AgentRunner(config=config)
+
+# This conversation will have short-term context
+agent.run("My name is Bob.")
+agent.run("What is my name?") # Will correctly answer "Bob"
+
+# The agent will not remember this conversation in a new session.
 ```
 
 ### Provider-Specific Features
+
 
 ```python
 from linden.core import AgentRunner, AgentConfiguration, Provider
@@ -455,6 +490,7 @@ gemini_agent = AgentRunner(config=gemini_config)
 - `output_type` (BaseModel, optional): Structured output schema (defaults to None)
 - `client` (Provider): LLM provider selection (defaults to Provider.OLLAMA)
 - `retries` (int): Maximum retry attempts (defaults to 3)
+- `enable_memory` (bool): Enables long-term memory (defaults to True)
 
 #### Features
 - Type validation for all parameters
