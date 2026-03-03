@@ -7,23 +7,6 @@ from pathlib import Path
 
 
 @dataclass
-class ModelsConfig:
-    """
-    Configuration for AI models used in the application.
-    
-    Attributes:
-        dec: Model used for decision making
-        tool: Model used for tool execution
-        extractor: Model used for data extraction
-        speaker: Model used for text generation or conversation
-    """
-    dec: str
-    tool: str
-    extractor: str
-    speaker: str
-
-
-@dataclass
 class GroqConfig:
     """
     Configuration for Groq API client.
@@ -118,7 +101,6 @@ class Configuration:
     API clients (Groq, Ollama, OpenAI), and memory settings.
     
     Attributes:
-        models: Configuration for AI models
         groq: Configuration for Groq API
         ollama: Configuration for Ollama
         openai: Configuration for OpenAI API
@@ -126,7 +108,6 @@ class Configuration:
         google: Configuration for Google GenAI API
         memory: Configuration for agent memory storage
     """
-    models: ModelsConfig
     groq: GroqConfig
     ollama: OllamaConfig
     openai: OpenAIConfig
@@ -185,7 +166,6 @@ class Configuration:
         memory_config = MemoryConfig(**memory_data) if memory_data else None
 
         return cls(
-            models=ModelsConfig(**data['models']),
             groq=groq_config,
             ollama=ollama_config,
             openai=openai_config,
