@@ -53,6 +53,7 @@ class AgentConfiguration(BaseModel):
     client: Provider = Field(default=Provider.OLLAMA, description="AI provider to use for this agent")
     retries: int = Field(default=3, description="Number of retry attempts for failed requests")
     history_max_messages: int = Field(default=20, description="Maximum number of messages to keep in history before summarizing")
+    enable_memory: bool = Field(default=True, description="Enable or disable agent memory")
 
 
 class AgentRunner:
@@ -95,13 +96,14 @@ class AgentRunner:
         self._set_client(client=config.client)
 
         # memory manager
-        self.memory = AgentMemory(agent_id=self.name, 
-                                  user_id=self.user_id, 
-                                  client=self.client, 
-                                  config=ConfigManager.get(), 
-                                  system_prompt=self.system_prompt, 
+        self.memory = AgentMemory(agent_id=self.name,
+                                  user_id=self.user_id,
+                                  client=self.client,
+                                  config=ConfigManager.get(),
+                                  system_prompt=self.system_prompt,
                                   history=self.history,
-                                  history_max_messages=config.history_max_messages)
+                                  history_max_messages=config.history_max_messages,
+                                  long_term_memory_enabled=config.enable_memory)
 
         logger.info("Init agent %s", self.name)
 

@@ -93,6 +93,8 @@ class MemoryManager:
             llm_config["config"]["api_key"] = conf.groq.api_key
         elif conf.memory.llm_provider == "anthropic":
              llm_config["config"]["api_key"] = conf.anthropic.api_key
+        elif conf.memory.llm_provider == "google":
+             llm_config["config"]["api_key"] = conf.google.api_key
 
         # Configure Embedder based on provider
         embedder_config = {
@@ -138,7 +140,11 @@ class AgentMemory:
     - Memory retrieval is filtered by agent_id to maintain isolation
     - This design prevents index conflicts while enabling efficient memory usage
     """
-    def __init__(self, agent_id: str, user_id: str, client, config, system_prompt: str = None, history: list[dict] = None, history_max_messages: int = 20):
+    def __init__(self, agent_id: str, user_id: str, 
+                 client, config, system_prompt: str = None, 
+                 history: list[dict] = None, 
+                 history_max_messages: int = 20, 
+                 long_term_memory_enabled: bool = True):
         """
         Initialize AgentMemory for a specific agent.
         
@@ -150,6 +156,7 @@ class AgentMemory:
             system_prompt (str, optional): System prompt to initialize conversation history
             history (list, optional): Pre-existing conversation history
             history_max_messages (int): Max messages before history is summarized
+            long_term_memory_enabled (bool): Whether to enable long-term, persistent memory.
         """
         self.agent_id = agent_id
         self.user_id = user_id
@@ -157,7 +164,8 @@ class AgentMemory:
         self.config = config
         self.system_prompt = system_prompt
         self.history_max_messages = history_max_messages
-        self._memory_manager = MemoryManager()
+        self.long_term_memory_enabled = long_term_memory_enabled
+        self._memory_manager = MemoryManager() if self.long_term_memory_enabled else None
         self._write_lock = threading.Lock()
 
         if history is None:
@@ -167,9 +175,11 @@ class AgentMemory:
         self._set_system_prompt()
 
     @property
-    def memory(self) -> Memory:
-        """Get the Memory instance from the singleton manager."""
-        return self._memory_manager.get_memory()
+    def memory(self) -> Memory | None:
+        """Get the Memory instance from the singleton manager if enabled."""
+        if self._memory_manager:
+            return self._memory_manager.get_memory()
+        return None
     
     def get_system_prompt(self):
         """Get the system prompt"""
@@ -192,7 +202,7 @@ class AgentMemory:
         elif isinstance(message, str):
             self.history.append({"role": "user", "content": message})
 
-        if persist:
+        if persist and self.memory:
             with self._write_lock:
                 # Add to persistent memory first
                 try:
@@ -210,35 +220,36 @@ class AgentMemory:
         Returns:
             list: Conversation messages including system prompt, relevant memories, and current input
         """
-        try:
-            search_result = self.memory.search(query=user_input,
-                                               user_id=self.user_id,
-                                               limit=10)
-            fragments = search_result.get('results')
-            if fragments:
-                
-                total_chars = sum(len(mem['memory']) for mem in fragments)
-                
-                if total_chars > self.config.memory.summarization_threshold_chars:
-                    # Summarize if the total length of memories exceeds the threshold
-                    context_str = self._summarize_memories(fragments, user_input)
-                else:
-                    # Otherwise, just format the raw memories
-                    context_str = "\n".join([f"- {mem['memory']}" for mem in fragments])
+        if self.memory:
+            try:
+                search_result = self.memory.search(query=user_input,
+                                                user_id=self.user_id,
+                                                limit=10)
+                fragments = search_result.get('results')
+                if fragments:
+                    
+                    total_chars = sum(len(mem['memory']) for mem in fragments)
+                    
+                    if total_chars > self.config.memory.summarization_threshold_chars:
+                        # Summarize if the total length of memories exceeds the threshold
+                        context_str = self._summarize_memories(fragments, user_input)
+                    else:
+                        # Otherwise, just format the raw memories
+                        context_str = "\n".join([f"- {mem['memory']}" for mem in fragments])
 
-                meta_prompt = f"""
-                {user_input}
+                    meta_prompt = f"""
+                    {user_input}
 
-                ---
-                [System Instructions]: Before answering, review the following context retrieved from your long-term memory. 
-                Use this information to provide a more accurate and complete response.
+                    ---
+                    [System Instructions]: Before answering, review the following context retrieved from your long-term memory. 
+                    Use this information to provide a more accurate and complete response.
 
-                Here is some relevant context from past conversations:\n{context_str}
-                ---
-                """
-                self.history.append({"role": "user", "content": meta_prompt})
-        except Exception as e:
-            logger.warning("Warning: Memory search failed, using local history only: %s", e)
+                    Here is some relevant context from past conversations:\n{context_str}
+                    ---
+                    """
+                    self.history.append({"role": "user", "content": meta_prompt})
+            except Exception as e:
+                logger.warning("Warning: Memory search failed, using local history only: %s", e)
 
         return self.history
 
