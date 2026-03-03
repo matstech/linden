@@ -92,7 +92,7 @@ class AnthropicClient(AiClient):
                 raise
             finally:
                 # Record the complete response in memory
-                if full_response:
+                if full_response and memory:
                     complete_content = "".join(full_response)
                     memory.record({"role": "assistant", "content": complete_content})
         return stream_generator()
@@ -130,7 +130,8 @@ class AnthropicClient(AiClient):
             tc.append(tool_call)
         else:
             # Save to memory only normal text responses, not tool calls
-            memory.record({"role": "assistant", "content": content})
+            if memory:
+                memory.record({"role": "assistant", "content": content})
 
         return (content, tc)
 

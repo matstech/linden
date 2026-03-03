@@ -38,9 +38,12 @@ class GoogleClient(BaseChatClient):
             tool_calls is a list of tool calls (or None) (if stream=False).
         """
         try:
-
-            conversation = memory.get_conversation(user_input=prompt)
-            system_prompt = memory.get_system_prompt()
+            if memory:
+                conversation = memory.get_conversation(user_input=prompt)
+                system_prompt = memory.get_system_prompt()
+            else:
+                conversation = None
+                system_prompt = ""
 
             message = prompt
             history = []
